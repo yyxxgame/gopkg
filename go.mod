@@ -1,3 +1,3 @@
-module github.com/yyxx/gopkg
+module github.com/yyxxgame/gopkg
 
 go 1.18
