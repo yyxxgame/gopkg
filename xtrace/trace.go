@@ -2,7 +2,7 @@
 //@Time     2022/05/16
 //@Author   #Suyghur,
 
-package trace
+package xtrace
 
 import (
 	"context"
