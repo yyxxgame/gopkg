@@ -3,12 +3,12 @@ package elastic
 import (
 	"context"
 	"github.com/olivere/elastic/v7"
-	"github.com/yyxxgame/gopkg/trace"
+	"github.com/yyxxgame/gopkg/xtrace"
 	"github.com/zeromicro/go-zero/core/logx"
 )
 
 type (
-	Option func(impl *client)
+	Option func(c *client)
 	client struct {
 		username   string
 		password   string
@@ -27,35 +27,35 @@ type (
 	}
 )
 
-func NewEsClient(endpoints []string, opts ...Option) IEsClient {
+func New(endpoints []string, opts ...Option) IEsClient {
 	impl := &client{}
 	for _, opt := range opts {
 		opt(impl)
 	}
-	cli, err := elastic.NewSimpleClient(
+	if cli, err := elastic.NewSimpleClient(
 		elastic.SetURL(endpoints...),
 		elastic.SetGzip(impl.enableGzip),
 		elastic.SetBasicAuth(impl.username, impl.password),
-	)
-
-	if err != nil {
+	); err != nil {
 		logx.WithContext(context.Background()).Error(err.Error())
 		panic(err.Error())
+	} else {
+		impl.instance = cli
 	}
-	impl.instance = cli
 	return impl
 }
 
 func WithAuth(username, password string) Option {
-	return func(es *client) {
-		es.username = username
-		es.password = password
+	return func(c *client) {
+		c.enableAuth = true
+		c.username = username
+		c.password = password
 	}
 }
 
 func WithGzip(enable bool) Option {
-	return func(es *client) {
-		es.enableGzip = enable
+	return func(c *client) {
+		c.enableGzip = enable
 	}
 }
 
@@ -65,7 +65,7 @@ func (impl *client) Query(handle func(srv *elastic.SearchService) *elastic.Searc
 
 func (impl *client) QueryCtx(ctx context.Context, handle func(srv *elastic.SearchService) *elastic.SearchService) *elastic.SearchResult {
 	var result *elastic.SearchResult
-	trace.StartFuncSpan(ctx, "QueryDataFromEs", func(ctx context.Context) {
+	xtrace.StartFuncSpan(ctx, "QueryDataFromEs", func(ctx context.Context) {
 		result = impl.query(ctx, handle)
 	})
 	return result
@@ -86,7 +86,7 @@ func (impl *client) Insert(index string, data interface{}) {
 }
 
 func (impl *client) InsertCtx(ctx context.Context, index string, data interface{}) {
-	trace.StartFuncSpan(ctx, "InsertDataToEs", func(ctx context.Context) {
+	xtrace.StartFuncSpan(ctx, "InsertDataToEs", func(ctx context.Context) {
 		impl.insert(ctx, index, data)
 	})
 }
