@@ -41,6 +41,7 @@ func (ob *Observer) Attach(key string, callback func(data *Data)) *Observer {
 	ob.wg.RunSafe(func() {
 		ob.attach(key, false, callback)
 	})
+	return ob
 }
 
 func (ob *Observer) AttachWithPrefix(key string, callback func(data *Data)) *Observer {
@@ -74,5 +75,5 @@ func (ob *Observer) attach(key string, enablePrefix bool, callback func(data *Da
 }
 
 func (ob *Observer) Detach() error {
-	ob.Close()
+	return ob.Close()
 }
