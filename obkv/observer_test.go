@@ -16,7 +16,7 @@ import (
 func TestNewObkv(t *testing.T) {
 	key := "test_ob"
 	value := stringx.Rand()
-	cli, _ := clientv3.NewFromURL("http://101.33.209.36:2379")
+	cli, _ := clientv3.NewFromURL("http://127.0.0.1:2379")
 	ctx := context.Background()
 	NewObkv(ctx, cli).Attach("test_ob", func(data *Data) {
 		assert.Equal(t, key, data.Key)
@@ -32,7 +32,7 @@ func TestWithPrefix(t *testing.T) {
 	key2 := "test_ob2"
 	value1 := stringx.Rand()
 	value2 := stringx.Rand()
-	cli, _ := clientv3.NewFromURL("http://101.33.209.36:2379")
+	cli, _ := clientv3.NewFromURL("http://127.0.0.1:2379")
 	ctx := context.Background()
 	NewObkv(ctx, cli).AttachWithPrefix(prefixKey, func(data *Data) {
 		//assert.Equal(t, value, data.Value)
