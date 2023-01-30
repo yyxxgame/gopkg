@@ -13,8 +13,8 @@ import (
 
 type (
 	IObserver interface {
-		Attach(key string, callback func(data *Data)) (*Observer, error)
-		AttachWithPrefix(key string, callback func(data *Data)) (*Observer, error)
+		Attach(key string, callback func(data *Data)) *Observer
+		AttachWithPrefix(key string, callback func(data *Data)) *Observer
 		Detach() error
 	}
 	Observer struct {
@@ -37,16 +37,17 @@ func NewObkv(ctx context.Context, client *clientv3.Client) *Observer {
 	return ob
 }
 
-func (ob *Observer) Attach(key string, callback func(data *Data)) {
+func (ob *Observer) Attach(key string, callback func(data *Data)) *Observer {
 	ob.wg.RunSafe(func() {
 		ob.attach(key, false, callback)
 	})
 }
 
-func (ob *Observer) AttachWithPrefix(key string, callback func(data *Data)) {
+func (ob *Observer) AttachWithPrefix(key string, callback func(data *Data)) *Observer {
 	ob.wg.RunSafe(func() {
 		ob.attach(key, true, callback)
 	})
+	return ob
 }
 
 func (ob *Observer) attach(key string, enablePrefix bool, callback func(data *Data)) {
@@ -72,6 +73,6 @@ func (ob *Observer) attach(key string, enablePrefix bool, callback func(data *Da
 	}
 }
 
-func (ob *Observer) Detach() {
+func (ob *Observer) Detach() error {
 	ob.Close()
 }
