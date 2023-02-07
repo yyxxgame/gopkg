@@ -51,9 +51,9 @@ func WithAuth(username, password string) Option {
 	}
 }
 
-func WithGzip(enable bool) Option {
+func WithGzip() Option {
 	return func(c *client) {
-		c.enableGzip = enable
+		c.enableGzip = true
 	}
 }
 
@@ -71,15 +71,6 @@ func (impl *client) QueryCtx(ctx context.Context, handle func(srv *elastic.Searc
 		}
 	})
 	return result
-}
-
-func (impl *client) query(ctx context.Context, handle func(srv *elastic.SearchService) *elastic.SearchService) *elastic.SearchResult {
-	if result, err := handle(impl.Search()).Pretty(true).Do(ctx); err != nil {
-		logx.WithContext(ctx).Errorf("query data on error: %v", err)
-		return nil
-	} else {
-		return result
-	}
 }
 
 func (impl *client) Insert(index string, data interface{}) {
