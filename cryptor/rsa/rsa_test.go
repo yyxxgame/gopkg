@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-const pubKey = `-----BEGIN PUBLIC KEY-----
+const publicKey = `-----BEGIN PUBLIC KEY-----
 MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCwZZwv13aFV7IduL5M0jyhTy0c
 NCi5ltNNugXvqjMr1aKZlmKM7Szh6DTyhcCejSRm3RXE326Kd78nODahSw/cTKWs
 cIOLnOfaqUO6l1LPUKJMXBlvdd6x6TEc6vGHXuUNonps82zzjngQNuOLIvP5Xd/c
@@ -34,22 +34,12 @@ jeofMKPxZSZkcxB1HtJEWu9oZOUrFDegVnQeGoXEq1U=
 -----END RSA PRIVATE KEY-----`
 
 func TestPubKeyEncryptAndPriKeyDecrypt(t *testing.T) {
-	t.Run("SetPublicKey", func(t *testing.T) {
-		if err := RSA.SetPublicKey(pubKey); err != nil {
-			t.Error(err)
-		}
-	})
-	t.Run("SetPrivateKey", func(t *testing.T) {
-		if err := RSA.SetPrivateKey(privateKey); err != nil {
-			t.Error(err)
-		}
-	})
 	original := []byte(stringx.Rand())
-	enc, err := RSA.PubKeyEncrypt(original)
+	enc, err := PubKeyEncrypt(original, publicKey)
 	if err != nil {
 		t.Error(err)
 	}
-	raw, err := RSA.PriKeyDecrypt(enc)
+	raw, err := PriKeyDecrypt(enc, privateKey)
 	if err != nil {
 		t.Error(err)
 	}
@@ -57,22 +47,12 @@ func TestPubKeyEncryptAndPriKeyDecrypt(t *testing.T) {
 }
 
 func TestPriKeyEncryptAndPubKeyDecrypt(t *testing.T) {
-	t.Run("SetPublicKey", func(t *testing.T) {
-		if err := RSA.SetPublicKey(pubKey); err != nil {
-			t.Error(err)
-		}
-	})
-	t.Run("SetPrivateKey", func(t *testing.T) {
-		if err := RSA.SetPrivateKey(privateKey); err != nil {
-			t.Error(err)
-		}
-	})
 	original := []byte(stringx.Rand())
-	enc, err := RSA.PriKeyEncrypt(original)
+	enc, err := PriKeyEncrypt(original, privateKey)
 	if err != nil {
 		t.Error(err)
 	}
-	raw, err := RSA.PubKeyDecrypt(enc)
+	raw, err := PubKeyDecrypt(enc, publicKey)
 	if err != nil {
 		t.Error(err)
 	}
