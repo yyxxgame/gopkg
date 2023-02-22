@@ -35,7 +35,6 @@ func TestWithPrefix(t *testing.T) {
 	cli, _ := clientv3.NewFromURL("http://127.0.0.1:2379")
 	ctx := context.Background()
 	NewObkv(ctx, cli).AttachWithPrefix(prefixKey, func(data *Data) {
-		//assert.Equal(t, value, data.Value)
 		if data.Key != key1 && data.Key != key2 {
 			t.FailNow()
 		}
