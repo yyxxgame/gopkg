@@ -3,7 +3,6 @@ module github.com/yyxxgame/gopkg
 go 1.18
 
 require (
-	github.com/bytedance/gopkg v0.0.0-20221122125632-68358b8ecec6
 	github.com/olivere/elastic/v7 v7.0.32
 	github.com/stretchr/testify v1.8.1
 	github.com/zeromicro/go-zero v1.4.4
