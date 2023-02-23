@@ -2,7 +2,7 @@
 //@Time     2023/02/22
 //@Author   #Suyghur,
 
-package cryptor
+package rsa
 
 import (
 	"bytes"

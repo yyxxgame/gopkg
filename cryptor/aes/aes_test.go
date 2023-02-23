@@ -2,7 +2,7 @@
 //@Time     2023/02/23
 //@Author   #Suyghur,
 
-package cryptor
+package aes
 
 import (
 	"github.com/stretchr/testify/assert"
