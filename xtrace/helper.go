@@ -10,6 +10,14 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+func GetTraceId(ctx context.Context) trace.TraceID {
+	/*
+		get trace id
+	*/
+	span := trace.SpanFromContext(ctx)
+	return span.SpanContext().TraceID()
+}
+
 func AddTags(ctx context.Context, kv ...attribute.KeyValue) {
 	/*
 		add tags by ctx
