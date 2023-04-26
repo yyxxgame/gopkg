@@ -7,6 +7,7 @@ package xtrace
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"github.com/zeromicro/go-zero/rest"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -28,6 +29,13 @@ func AddTags(ctx context.Context, kv ...attribute.KeyValue) {
 	*/
 	span := trace.SpanFromContext(ctx)
 	span.SetAttributes(kv...)
+}
+
+func AddTagsByMap(ctx context.Context, kvs map[string]interface{}) {
+	for k, v := range kvs {
+		vStr := fmt.Sprintf("%v", v)
+		AddTags(ctx, attribute.String(k, vStr))
+	}
 }
 
 func AddEvent(ctx context.Context, name string, kv ...attribute.KeyValue) {
@@ -56,6 +64,7 @@ func TracingOnApiSvr(server *rest.Server) {
 				//if err != nil {
 				//	next(w, r)
 				//}
+				//AddTagsByMap(r.Context(), data)
 
 				// write body info into events
 				AddEvent(r.Context(), r.RequestURI, attribute.String("params", jsonString))
