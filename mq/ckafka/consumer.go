@@ -12,13 +12,15 @@ import (
 	"github.com/zeromicro/go-zero/core/lang"
 	"github.com/zeromicro/go-zero/core/logx"
 	"github.com/zeromicro/go-zero/core/syncx"
+	"go.opentelemetry.io/otel/attribute"
+	oteltrace "go.opentelemetry.io/otel/trace"
 	"strings"
 )
 
 type (
 	IConsumer interface {
 		Looper(handler ConsumerHandler)
-		onMessage(message *kafka.Message, handler ConsumerHandler)
+		handleMessage(message *kafka.Message, handler ConsumerHandler) error
 		Release()
 	}
 
@@ -83,7 +85,22 @@ func (c *consumer) Looper(handler ConsumerHandler) {
 				}
 				switch e := ev.(type) {
 				case *kafka.Message:
-					c.onMessage(e, handler)
+					traceId := ""
+					for _, header := range e.Headers {
+						if header.Key == ckafkaTraceIdKey {
+							traceId = string(header.Value)
+						}
+					}
+					if c.tracer != nil && traceId != "" {
+						xtrace.RunWithTraceHook(c.tracer, oteltrace.SpanKindConsumer, traceId, "ckafka.Looper.handleMessage", func(ctx context.Context) error {
+							return c.handleMessage(e, handler)
+						},
+							attribute.String(ckafkaTraceKey, string(e.Key)),
+							attribute.String(ckafkaTracePayload, e.String()),
+						)
+					} else {
+						c.handleMessage(e, handler)
+					}
 				case kafka.AssignedPartitions:
 					c.Assign(e.Partitions)
 				case kafka.RevokedPartitions:
@@ -98,20 +115,17 @@ func (c *consumer) Looper(handler ConsumerHandler) {
 	})
 }
 
-func (c *consumer) onMessage(message *kafka.Message, handler ConsumerHandler) {
-	traceId := ""
-	for _, header := range message.Headers {
-		if header.Key == ckafkaTraceIdKey {
-			traceId = string(header.Value)
+func (c *consumer) handleMessage(message *kafka.Message, handler ConsumerHandler) error {
+	if err := handler(message); err != nil {
+		logx.Errorf("ckafka.Looper.onMessage on error: %v", err)
+		return err
+	} else {
+		if _, err = c.StoreMessage(message); err != nil {
+			logx.Errorf("ckafka.Looper.StoreMessage on error: %v", err)
+			return err
 		}
 	}
-	xtrace.RunOnTracing(traceId, "ckafka.Looper.onMessage", func(ctx context.Context) {
-		if err := handler(message); err != nil {
-			logx.Errorf("ckafka.Looper.onMessage on error: %v", err)
-		} else {
-			c.StoreMessage(message)
-		}
-	})
+	return nil
 }
 
 func (c *consumer) Release() {
