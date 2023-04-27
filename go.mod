@@ -3,6 +3,7 @@ module github.com/yyxxgame/gopkg
 go 1.18
 
 require (
+	github.com/confluentinc/confluent-kafka-go/v2 v2.1.0
 	github.com/olivere/elastic/v7 v7.0.32
 	github.com/stretchr/testify v1.8.2
 	github.com/zeromicro/go-zero v1.5.1
@@ -59,7 +60,7 @@ require (
 	golang.org/x/net v0.9.0 // indirect
 	golang.org/x/sys v0.7.0 // indirect
 	golang.org/x/text v0.9.0 // indirect
-	google.golang.org/genproto v0.0.0-20230123190316-2c411cf9d197 // indirect
+	google.golang.org/genproto v0.0.0-20230331144136-dcfb400f0633 // indirect
 	google.golang.org/grpc v1.54.0 // indirect
 	google.golang.org/protobuf v1.30.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect

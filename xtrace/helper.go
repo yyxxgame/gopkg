@@ -11,7 +11,7 @@ import (
 	"github.com/zeromicro/go-zero/rest"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
-	"io/ioutil"
+	"io"
 	"net/http"
 )
 
@@ -53,9 +53,9 @@ func TracingOnApiSvr(server *rest.Server) {
 	server.Use(func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 
-			bytesData, err := ioutil.ReadAll(r.Body)
+			bytesData, err := io.ReadAll(r.Body)
 			if err == nil {
-				r.Body = ioutil.NopCloser(bytes.NewBuffer(bytesData))
+				r.Body = io.NopCloser(bytes.NewBuffer(bytesData))
 				jsonString := string(bytesData)
 
 				// todo body parsed into tags
