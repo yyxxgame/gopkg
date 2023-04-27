@@ -4,9 +4,14 @@
 
 package ckafka
 
-import "github.com/confluentinc/confluent-kafka-go/v2/kafka"
+import (
+	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
+	oteltrace "go.opentelemetry.io/otel/trace"
+)
 
 const ckafkaTraceIdKey = "ckafka-trace-id"
+const ckafkaTraceKey = "ckafka-key"
+const ckafkaTracePayload = "ckafka-payload"
 
 // see: https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md
 var (
@@ -42,6 +47,7 @@ type (
 		Username  string
 		Password  string
 		configMap *kafka.ConfigMap
+		tracer    oteltrace.Tracer
 		*baseProducer
 	}
 	baseProducer struct {
@@ -68,5 +74,11 @@ func WithConfigMap(configMap *kafka.ConfigMap) Option {
 func WithProducerPartitioner(partitioner IPartitioner) Option {
 	return func(i *instance) {
 		i.partitioner = partitioner
+	}
+}
+
+func WithTracer(tracer oteltrace.Tracer) Option {
+	return func(i *instance) {
+		i.tracer = tracer
 	}
 }

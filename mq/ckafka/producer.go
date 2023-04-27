@@ -11,6 +11,8 @@ import (
 	"github.com/yyxxgame/gopkg/syncx/gopool"
 	"github.com/yyxxgame/gopkg/xtrace"
 	"github.com/zeromicro/go-zero/core/logx"
+	"go.opentelemetry.io/otel/attribute"
+	oteltrace "go.opentelemetry.io/otel/trace"
 	"strings"
 )
 
@@ -19,6 +21,7 @@ type (
 		install()
 		Emit(key string, bMsg []byte)
 		EmitCtx(ctx context.Context, key string, bMsg []byte)
+		produceMessage(message *kafka.Message) error
 		Release()
 	}
 
@@ -147,20 +150,31 @@ func (p *producer) EmitCtx(ctx context.Context, key string, bMsg []byte) {
 		Key:   ckafkaTraceIdKey,
 		Value: []byte(traceId),
 	}}
-	xtrace.StartFuncSpan(ctx, "ckafka.EmitCtx", func(ctx context.Context) {
-		if err := p.Produce(message, p.deliveryChan); err != nil {
-			logx.Errorf("ckafka.EmitCtx.Produce on error: %v", err)
-			return
-		}
-		e := <-p.deliveryChan
-		ev := e.(*kafka.Message)
-		if ev.TopicPartition.Error != nil {
-			logx.Errorf("ckafka.EmitCtx.TopicPartition on error: %v", ev.TopicPartition.Error)
-			return
-		}
-		p.nextPartition, _ = p.partitioner.Partition(message, p.numPartition)
+	if p.tracer != nil {
+		xtrace.WithTraceHook(ctx, p.tracer, oteltrace.SpanKindProducer, "ckafka.EmitCtx", func(ctx context.Context) error {
+			return p.produceMessage(message)
+		},
+			attribute.String(ckafkaTraceKey, key),
+			attribute.String(ckafkaTracePayload, message.String()),
+		)
+	} else {
+		p.produceMessage(message)
+	}
+}
 
-	})
+func (p *producer) produceMessage(message *kafka.Message) error {
+	if err := p.Produce(message, p.deliveryChan); err != nil {
+		logx.Errorf("ckafka.EmitCtx.Produce on error: %v", err)
+		return err
+	}
+	e := <-p.deliveryChan
+	ev := e.(*kafka.Message)
+	if err := ev.TopicPartition.Error; err != nil {
+		logx.Errorf("ckafka.EmitCtx.TopicPartition on error: %v", err)
+		return err
+	}
+	p.nextPartition, _ = p.partitioner.Partition(message, p.numPartition)
+	return nil
 }
 
 func (p *producer) Release() {
