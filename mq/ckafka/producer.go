@@ -11,33 +11,12 @@ import (
 	"github.com/yyxxgame/gopkg/syncx/gopool"
 	"github.com/yyxxgame/gopkg/xtrace"
 	"github.com/zeromicro/go-zero/core/logx"
-	"github.com/zeromicro/go-zero/core/trace"
-	"go.opentelemetry.io/otel/codes"
-	oteltrace "go.opentelemetry.io/otel/trace"
 	"strings"
 )
 
-// see: https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md
-var defaultProducerConfigMap = &kafka.ConfigMap{
-	"acks": 1,
-	// 请求发生错误时重试次数，建议将该值设置为大于0，失败重试最大程度保证消息不丢失
-	"retries": 0,
-	//"api.version.request": "false",
-	//"broker.version.fallback": "0.10.0",
-	// 发送请求失败时到下一次重试请求之间的时间
-	"retry.backoff.ms": 1000,
-	// producer 网络请求的超时时间。
-	"socket.timeout.ms": 5000,
-	// 设置客户端内部重试间隔。
-	"reconnect.backoff.max.ms": 2000,
-	// 消息最大载荷10m
-	"message.max.bytes": 10485760,
-	"security.protocol": "plaintext",
-}
-
 type (
 	IProducer interface {
-		registerCallback()
+		install()
 		Emit(key string, bMsg []byte)
 		EmitCtx(ctx context.Context, key string, bMsg []byte)
 		Release()
@@ -45,6 +24,7 @@ type (
 
 	// A Producer wraps a kafka.Producer and traces its operations.
 	producer struct {
+		*instance
 		*kafka.Producer
 
 		Username string
@@ -60,16 +40,20 @@ type (
 
 		deliveryChan chan kafka.Event
 	}
-	Option func(p *producer)
+	//ProducerOption func(p *producer)
 )
 
 // NewCkafkaProducer calls kafka.NewProducer and wraps the resulting Producer with
 // tracing instrumentation.
 func NewCkafkaProducer(brokers []string, topic string, opts ...Option) IProducer {
-	impl := &producer{}
-	for _, opt := range opts {
-		opt(impl)
+	impl := &producer{
+		instance: &instance{},
 	}
+
+	for _, opt := range opts {
+		opt(impl.instance)
+	}
+
 	if impl.configMap == nil {
 		impl.configMap = defaultProducerConfigMap
 	}
@@ -80,6 +64,7 @@ func NewCkafkaProducer(brokers []string, topic string, opts ...Option) IProducer
 		_ = impl.configMap.SetKey("sasl.username", impl.Username)
 		_ = impl.configMap.SetKey("sasl.password", impl.Password)
 	}
+
 	if p, err := kafka.NewProducer(impl.configMap); err != nil {
 		logx.Errorf("ckafka.NewProducer on error: %v", err)
 		panic(err)
@@ -122,30 +107,11 @@ func NewCkafkaProducer(brokers []string, topic string, opts ...Option) IProducer
 
 	impl.nextPartition = kafka.PartitionAny
 
-	impl.registerCallback()
+	impl.install()
 	return impl
 }
 
-func WithSaslPlaintext(username, passwod string) Option {
-	return func(p *producer) {
-		p.Username = username
-		p.Password = passwod
-	}
-}
-
-func WithConfigMap(configMap *kafka.ConfigMap) Option {
-	return func(p *producer) {
-		p.configMap = configMap
-	}
-}
-
-func WithPartitioner(partitioner IPartitioner) Option {
-	return func(p *producer) {
-		p.partitioner = partitioner
-	}
-}
-
-func (p *producer) registerCallback() {
+func (p *producer) install() {
 	gopool.Go(func() {
 		for event := range p.Events() {
 			switch message := event.(type) {
@@ -163,6 +129,7 @@ func (p *producer) registerCallback() {
 		}
 	})
 }
+
 func (p *producer) Emit(key string, bMsg []byte) {
 	p.EmitCtx(context.Background(), key, bMsg)
 }
@@ -177,43 +144,27 @@ func (p *producer) EmitCtx(ctx context.Context, key string, bMsg []byte) {
 	message.Key = []byte(key)
 	message.Value = bMsg
 	message.Headers = []kafka.Header{{
-		Key:   "ckafka-trace-id",
+		Key:   ckafkaTraceIdKey,
 		Value: []byte(traceId),
 	}}
-	ctx = p.startSpan(ctx, message)
-	err := p.Produce(message, p.deliveryChan)
+	xtrace.StartFuncSpan(ctx, "ckafka.EmitCtx", func(ctx context.Context) {
+		if err := p.Produce(message, p.deliveryChan); err != nil {
+			logx.Errorf("ckafka.EmitCtx.Produce on error: %v", err)
+			return
+		}
+		e := <-p.deliveryChan
+		ev := e.(*kafka.Message)
+		if ev.TopicPartition.Error != nil {
+			logx.Errorf("ckafka.EmitCtx.TopicPartition on error: %v", ev.TopicPartition.Error)
+			return
+		}
+		p.nextPartition, _ = p.partitioner.Partition(message, p.numPartition)
 
-	e := <-p.deliveryChan
-	ev := e.(*kafka.Message)
-	if ev.TopicPartition.Error != nil {
-		err = ev.TopicPartition.Error
-	}
-	p.nextPartition, err = p.partitioner.Partition(message, p.numPartition)
-	defer p.endSpan(ctx, err)
+	})
 }
 
 func (p *producer) Release() {
 	// Wait for message deliveries before shutting down
 	p.Flush(15 * 1000)
 	p.Close()
-}
-
-func (p *producer) startSpan(ctx context.Context, message *kafka.Message) context.Context {
-	tracer := trace.TracerFromContext(ctx)
-	ctx, span := tracer.Start(ctx, spanName, oteltrace.WithSpanKind(oteltrace.SpanKindProducer))
-	span.SetAttributes(ckafkaAttributeKey.String(message.String()))
-	return ctx
-}
-
-func (p *producer) endSpan(ctx context.Context, err error) {
-	span := oteltrace.SpanFromContext(ctx)
-	defer span.End()
-
-	if err == nil {
-		span.SetStatus(codes.Ok, "")
-		return
-	}
-
-	span.SetStatus(codes.Error, err.Error())
-	span.RecordError(err)
 }

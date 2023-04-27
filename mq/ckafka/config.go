@@ -5,19 +5,16 @@
 package ckafka
 
 type ProducerConfig struct {
-	Brokers   []string `json:""`
-	Topic     string   `json:""`
-	Username  string   `json:",optional"`
-	Password  string   `json:",optional"`
-	Partition int      `json:",default=1"`
+	Brokers  []string `json:""`
+	Topic    string   `json:""`
+	Username string   `json:",optional"`
+	Password string   `json:",optional"`
 }
 
 type ConsumerConfig struct {
-	Brokers []string
-	Topics  []string
-	GroupId string
-
-	Consumers int    `json:",default=8"`
-	Username  string `json:",optional"`
-	Password  string `json:",optional"`
+	Brokers  []string
+	Topics   []string
+	GroupId  string
+	Username string `json:",optional"`
+	Password string `json:",optional"`
 }
