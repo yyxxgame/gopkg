@@ -74,7 +74,7 @@ func (c *client) Query(chain EsSearchChain) *elastic.SearchResult {
 func (c *client) QueryCtx(ctx context.Context, chain EsSearchChain) *elastic.SearchResult {
 	var result *elastic.SearchResult
 	if c.tracer != nil {
-		xtrace.WithTraceHook(ctx, c.tracer, oteltrace.SpanKindInternal, "elastic.QueryCtx", func(ctx context.Context) error {
+		_ = xtrace.WithTraceHook(ctx, c.tracer, oteltrace.SpanKindInternal, "elastic.QueryCtx", func(ctx context.Context) error {
 			if ret, err := chain(c.Search()).Pretty(true).Do(ctx); err != nil {
 				logx.WithContext(ctx).Errorf("query data on error: %v", err)
 				return err
@@ -99,7 +99,7 @@ func (c *client) Insert(index string, data interface{}) {
 
 func (c *client) InsertCtx(ctx context.Context, index string, data interface{}) {
 	if c.tracer != nil {
-		xtrace.WithTraceHook(ctx, c.tracer, oteltrace.SpanKindInternal, "elastic.InsertCtx", func(ctx context.Context) error {
+		_ = xtrace.WithTraceHook(ctx, c.tracer, oteltrace.SpanKindInternal, "elastic.InsertCtx", func(ctx context.Context) error {
 			if result, err := c.Index().Index(index).Refresh("false").BodyJson(data).Do(ctx); err != nil {
 				logx.WithContext(ctx).Errorf("insert data on error: %v", err)
 				return err

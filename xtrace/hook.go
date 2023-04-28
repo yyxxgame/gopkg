@@ -17,19 +17,21 @@ import (
 
 type HookFunc func(ctx context.Context) error
 
-func WithTraceHook(ctx context.Context, tracer oteltrace.Tracer, spanKind oteltrace.SpanKind, name string, hook HookFunc, kv ...attribute.KeyValue) {
+func WithTraceHook(ctx context.Context, tracer oteltrace.Tracer, spanKind oteltrace.SpanKind, name string, hook HookFunc, kv ...attribute.KeyValue) error {
 	spanCtx, span := tracer.Start(ctx, name, oteltrace.WithSpanKind(spanKind))
 	span.AddEvent(name, oteltrace.WithAttributes(kv...))
 	defer span.End()
 	if err := hook(spanCtx); err != nil {
 		span.SetStatus(codes.Error, err.Error())
 		span.RecordError(err)
+		return err
 	} else {
 		span.SetStatus(codes.Ok, "")
 	}
+	return nil
 }
 
-func RunWithTraceHook(tracer oteltrace.Tracer, spanKind oteltrace.SpanKind, traceId string, name string, hook HookFunc, kv ...attribute.KeyValue) {
+func RunWithTraceHook(tracer oteltrace.Tracer, spanKind oteltrace.SpanKind, traceId string, name string, hook HookFunc, kv ...attribute.KeyValue) error {
 	propagator := otel.GetTextMapPropagator()
 	header := http.Header{}
 	if len(traceId) != 0 {
@@ -48,8 +50,9 @@ func RunWithTraceHook(tracer oteltrace.Tracer, spanKind oteltrace.SpanKind, trac
 	if err := hook(spanCtx); err != nil {
 		span.SetStatus(codes.Error, err.Error())
 		span.RecordError(err)
+		return err
 	} else {
 		span.SetStatus(codes.Ok, "")
-
 	}
+	return nil
 }

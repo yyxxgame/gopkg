@@ -87,19 +87,19 @@ func (c *consumer) Looper(handler ConsumerHandler) {
 				case *kafka.Message:
 					traceId := GetTraceIdFromHeader(e)
 					if c.tracer != nil && traceId != "" {
-						xtrace.RunWithTraceHook(c.tracer, oteltrace.SpanKindConsumer, traceId, "ckafka.Looper.handleMessage", func(ctx context.Context) error {
+						_ = xtrace.RunWithTraceHook(c.tracer, oteltrace.SpanKindConsumer, traceId, "ckafka.Looper.handleMessage", func(ctx context.Context) error {
 							return c.handleMessage(e, handler)
 						},
 							attribute.String(ckafkaTraceKey, string(e.Key)),
 							attribute.String(ckafkaTracePayload, e.String()),
 						)
 					} else {
-						c.handleMessage(e, handler)
+						_ = c.handleMessage(e, handler)
 					}
 				case kafka.AssignedPartitions:
-					c.Assign(e.Partitions)
+					_ = c.Assign(e.Partitions)
 				case kafka.RevokedPartitions:
-					c.Unassign()
+					_ = c.Unassign()
 				case kafka.Error:
 					logx.Errorf("ckafka consumer notice error: %s", e.Error())
 				default:
