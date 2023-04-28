@@ -9,7 +9,7 @@ import (
 	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
-const ckafkaTraceIdKey = "ckafka-trace-id"
+const ckafkaTraceIdKey = "x-trace-id"
 const ckafkaTraceKey = "ckafka-key"
 const ckafkaTracePayload = "ckafka-payload"
 
