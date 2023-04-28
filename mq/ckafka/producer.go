@@ -151,14 +151,14 @@ func (p *producer) EmitCtx(ctx context.Context, key string, bMsg []byte) {
 		Value: []byte(traceId),
 	}}
 	if p.tracer != nil {
-		xtrace.WithTraceHook(ctx, p.tracer, oteltrace.SpanKindProducer, "ckafka.EmitCtx", func(ctx context.Context) error {
+		_ = xtrace.WithTraceHook(ctx, p.tracer, oteltrace.SpanKindProducer, "ckafka.EmitCtx", func(ctx context.Context) error {
 			return p.produceMessage(message)
 		},
 			attribute.String(ckafkaTraceKey, key),
 			attribute.String(ckafkaTracePayload, message.String()),
 		)
 	} else {
-		p.produceMessage(message)
+		_ = p.produceMessage(message)
 	}
 }
 
