@@ -85,12 +85,7 @@ func (c *consumer) Looper(handler ConsumerHandler) {
 				}
 				switch e := ev.(type) {
 				case *kafka.Message:
-					traceId := ""
-					for _, header := range e.Headers {
-						if header.Key == ckafkaTraceIdKey {
-							traceId = string(header.Value)
-						}
-					}
+					traceId := GetTraceIdFromHeader(e)
 					if c.tracer != nil && traceId != "" {
 						xtrace.RunWithTraceHook(c.tracer, oteltrace.SpanKindConsumer, traceId, "ckafka.Looper.handleMessage", func(ctx context.Context) error {
 							return c.handleMessage(e, handler)
