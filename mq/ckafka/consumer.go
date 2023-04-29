@@ -101,9 +101,9 @@ func (c *consumer) Looper(handler ConsumerHandler) {
 				case kafka.RevokedPartitions:
 					_ = c.Unassign()
 				case kafka.Error:
-					logx.Errorf("ckafka consumer notice error: %s", e.Error())
+					logx.Errorf("ckafka consumer notice error, code: %d, msg: %s", e.Code(), e.Error())
 				default:
-					logx.Infof("ckafka consumer ignored event: %s", e.String())
+					logx.Infof("ckafka consumer ignored event: %v", e.String())
 				}
 			}
 		}
@@ -118,6 +118,11 @@ func (c *consumer) handleMessage(message *kafka.Message, handler ConsumerHandler
 		if _, err = c.StoreMessage(message); err != nil {
 			logx.Errorf("ckafka.Looper.StoreMessage on error: %v", err)
 			return err
+		} else {
+			if _, err := c.CommitMessage(message); err != nil {
+				logx.Errorf("ckafka.Looper.StoreMessage on error: %v", err)
+				return err
+			}
 		}
 	}
 	return nil

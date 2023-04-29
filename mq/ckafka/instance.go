@@ -31,14 +31,14 @@ var (
 	}
 	defaultConsumerConfigMap = &kafka.ConfigMap{
 		"auto.offset.reset":        "latest",
-		"session.timeout.ms":       6000,
-		"enable.auto.offset.store": true,
+		"enable.auto.offset.store": false,
 		"enable.auto.commit":       true,
+		"max.poll.interval.ms":     300000,
+		"heartbeat.interval.ms":    3000,
+		"session.timeout.ms":       6000,
 		"auto.commit.interval.ms":  5000,
-		//"go.events.channel.enable":        true,
-		"go.application.rebalance.enable": true,
-		"broker.address.family":           "v4",
-		"security.protocol":               "plaintext",
+		"broker.address.family":    "v4",
+		"security.protocol":        "plaintext",
 	}
 )
 
