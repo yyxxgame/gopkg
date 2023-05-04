@@ -1,4 +1,4 @@
-//@File     instance.go
+//@File     config.go
 //@Time     2023/04/25
 //@Author   #Suyghur,
 
@@ -9,7 +9,6 @@ import (
 	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
-const ckafkaTraceIdKey = "x-trace-id"
 const ckafkaTraceKey = "ckafka-key"
 const ckafkaTracePayload = "ckafka-payload"
 

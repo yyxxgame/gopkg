@@ -37,7 +37,7 @@ type (
 )
 
 // NewRandomPartitioner returns a Partitioner which chooses a random partition each time.
-func NewRandomPartitioner(topic string) IPartitioner {
+func NewRandomPartitioner() IPartitioner {
 	p := new(randomPartitioner)
 	p.generator = rand.New(rand.NewSource(time.Now().UTC().UnixNano()))
 	return p
@@ -48,7 +48,7 @@ func (p *randomPartitioner) Partition(message *kafka.Message, numPartitions int3
 }
 
 // NewRoundRobinPartitioner returns a Partitioner which walks through the available partitions one at a time.
-func NewRoundRobinPartitioner(topic string) IPartitioner {
+func NewRoundRobinPartitioner() IPartitioner {
 	return &roundRobinPartitioner{}
 }
 
@@ -65,9 +65,9 @@ func (p *roundRobinPartitioner) Partition(message *kafka.Message, numPartitions 
 // random partition is chosen. Otherwise the FNV-1a hash of the encoded bytes of the message key is used,
 // modulus the number of partitions. This ensures that messages with the same key always end up on the
 // same partition.
-func NewHashPartitioner(topic string) IPartitioner {
+func NewHashPartitioner() IPartitioner {
 	p := new(hashPartitioner)
-	p.random = NewRandomPartitioner(topic)
+	p.random = NewRandomPartitioner()
 	p.hasher = fnv.New32a()
 	p.referenceAbs = false
 	return p
