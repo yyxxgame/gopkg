@@ -1,4 +1,4 @@
-//@File     producer.go
+//@File     syncproducer.go
 //@Time     2023/04/21
 //@Author   #Suyghur,
 
@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
+	"github.com/yyxxgame/gopkg/mq"
 	"github.com/yyxxgame/gopkg/syncx/gopool"
 	"github.com/yyxxgame/gopkg/xtrace"
 	"github.com/zeromicro/go-zero/core/logx"
@@ -18,10 +19,8 @@ import (
 
 type (
 	IProducer interface {
-		install()
-		Emit(key string, bMsg []byte)
-		EmitCtx(ctx context.Context, key string, bMsg []byte)
-		produceMessage(message *kafka.Message) error
+		Publish(topic, key string, bMsg []byte) error
+		PublishCtx(ctx context.Context, topic, key string, bMsg []byte) error
 		Release()
 	}
 
@@ -35,20 +34,17 @@ type (
 
 		configMap *kafka.ConfigMap
 
-		topic string
-
 		numPartition  int32
 		nextPartition int32
 		partitioner   IPartitioner
 
 		deliveryChan chan kafka.Event
 	}
-	//ProducerOption func(p *producer)
 )
 
 // NewCkafkaProducer calls kafka.NewProducer and wraps the resulting Producer with
 // tracing instrumentation.
-func NewCkafkaProducer(brokers []string, topic string, opts ...Option) IProducer {
+func NewCkafkaProducer(brokers []string, opts ...Option) IProducer {
 	impl := &producer{
 		instance: &instance{},
 	}
@@ -75,37 +71,36 @@ func NewCkafkaProducer(brokers []string, topic string, opts ...Option) IProducer
 		impl.Producer = p
 	}
 
-	adminCli, err := kafka.NewAdminClientFromProducer(impl.Producer)
-	if err != nil {
-		logx.Errorf("ckafka.NewAdminClientFromProducer on error: %v", err)
-		panic(err)
-	}
+	//adminCli, err := kafka.NewAdminClientFromProducer(impl.Producer)
+	//if err != nil {
+	//	logx.Errorf("ckafka.NewAdminClientFromProducer on error: %v", err)
+	//	panic(err)
+	//}
+	//
+	//metadata, err := adminCli.GetMetadata(&topic, false, 10000)
+	//if err != nil {
+	//	logx.Errorf("ckafka.GetMetadata on error: %v", err)
+	//	panic(err)
+	//}
 
-	metadata, err := adminCli.GetMetadata(&topic, false, 10000)
-	if err != nil {
-		logx.Errorf("ckafka.GetMetadata on error: %v", err)
-		panic(err)
-	}
+	//if topicMetadata, ok := metadata.Topics[topic]; !ok {
+	//	err = fmt.Errorf("topic#%s no topic metadata", topic)
+	//	logx.Errorf("ckafka.Metadata.Topics on error: %v", err)
+	//	panic(err)
+	//} else {
+	//	if len(topicMetadata.Partitions) == 0 {
+	//		err = fmt.Errorf("topic#%s no topic partitions", topic)
+	//		logx.Errorf("ckafka.Metadata.Topics on error: %v", err)
+	//		panic(err)
+	//	} else {
+	//		impl.numPartition = int32(len(topicMetadata.Partitions))
+	//	}
+	//}
 
-	if topicMetadata, ok := metadata.Topics[topic]; !ok {
-		err = fmt.Errorf("topic#%s no topic metadata", topic)
-		logx.Errorf("ckafka.Metadata.Topics on error: %v", err)
-		panic(err)
-	} else {
-		if len(topicMetadata.Partitions) == 0 {
-			err = fmt.Errorf("topic#%s no topic partitions", topic)
-			logx.Errorf("ckafka.Metadata.Topics on error: %v", err)
-			panic(err)
-		} else {
-			impl.numPartition = int32(len(topicMetadata.Partitions))
-		}
-	}
-
-	impl.topic = topic
 	impl.deliveryChan = make(chan kafka.Event)
 
 	if impl.partitioner == nil {
-		impl.partitioner = NewRandomPartitioner(topic)
+		impl.partitioner = NewRandomPartitioner()
 	}
 
 	impl.nextPartition = kafka.PartitionAny
@@ -133,44 +128,64 @@ func (p *producer) install() {
 	})
 }
 
-func (p *producer) Emit(key string, bMsg []byte) {
-	p.EmitCtx(context.Background(), key, bMsg)
+func (p *producer) Publish(topic, key string, bMsg []byte) error {
+	return p.PublishCtx(context.Background(), topic, key, bMsg)
 }
 
-func (p *producer) EmitCtx(ctx context.Context, key string, bMsg []byte) {
+func (p *producer) PublishCtx(ctx context.Context, topic, key string, bMsg []byte) error {
+
+	metadata, err := p.GetMetadata(&topic, false, 1000)
+	if err != nil {
+		logx.Errorf("ckafka.GetMetadata on error: %v", err)
+		panic(err)
+	}
+	if topicMetadata, ok := metadata.Topics[topic]; !ok {
+		err = fmt.Errorf("topic#%s no topic metadata", topic)
+		logx.Errorf("ckafka.Metadata.Topics on error: %v", err)
+		panic(err)
+	} else {
+		if len(topicMetadata.Partitions) == 0 {
+			err = fmt.Errorf("topic#%s no topic partitions", topic)
+			logx.Errorf("ckafka.Metadata.Topics on error: %v", err)
+			panic(err)
+		} else {
+			p.numPartition = int32(len(topicMetadata.Partitions))
+		}
+	}
+
 	traceId := xtrace.GetTraceId(ctx).String()
 	message := &kafka.Message{}
 	message.TopicPartition = kafka.TopicPartition{
-		Topic:     &p.topic,
+		Topic:     &topic,
 		Partition: p.nextPartition,
 	}
 	message.Key = []byte(key)
 	message.Value = bMsg
 	message.Headers = []kafka.Header{{
-		Key:   ckafkaTraceIdKey,
+		Key:   mq.TraceId,
 		Value: []byte(traceId),
 	}}
 	if p.tracer != nil {
-		_ = xtrace.WithTraceHook(ctx, p.tracer, oteltrace.SpanKindProducer, "ckafka.EmitCtx", func(ctx context.Context) error {
-			return p.produceMessage(message)
+		return xtrace.WithTraceHook(ctx, p.tracer, oteltrace.SpanKindProducer, "ckafka.EmitCtx", func(ctx context.Context) error {
+			return p.publishMessage(message)
 		},
 			attribute.String(ckafkaTraceKey, key),
 			attribute.String(ckafkaTracePayload, message.String()),
 		)
 	} else {
-		_ = p.produceMessage(message)
+		return p.publishMessage(message)
 	}
 }
 
-func (p *producer) produceMessage(message *kafka.Message) error {
+func (p *producer) publishMessage(message *kafka.Message) error {
 	if err := p.Produce(message, p.deliveryChan); err != nil {
-		logx.Errorf("ckafka.EmitCtx.Produce on error: %v", err)
+		logx.Errorf("ckafka.publishMessage on error: %v", err)
 		return err
 	}
 	e := <-p.deliveryChan
 	ev := e.(*kafka.Message)
 	if err := ev.TopicPartition.Error; err != nil {
-		logx.Errorf("ckafka.EmitCtx.TopicPartition on error: %v", err)
+		logx.Errorf("ckafka.TopicPartition on error: %v", err)
 		return err
 	}
 	p.nextPartition, _ = p.partitioner.Partition(message, p.numPartition)

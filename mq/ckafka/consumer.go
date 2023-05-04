@@ -20,11 +20,8 @@ import (
 type (
 	IConsumer interface {
 		Looper(handler ConsumerHandler)
-		handleMessage(message *kafka.Message, handler ConsumerHandler) error
 		Release()
 	}
-
-	ConsumerHandler func(message *kafka.Message) error
 
 	consumer struct {
 		*instance
@@ -35,6 +32,8 @@ type (
 		signal    chan lang.PlaceholderType
 		done      *syncx.AtomicBool
 	}
+
+	ConsumerHandler func(message *kafka.Message) error
 )
 
 func NewCkafkaConsumer(brokers, topics []string, groupId string, opts ...Option) IConsumer {
