@@ -28,12 +28,15 @@ func StartMqProducerTrace(ctx context.Context, name string, kv ...attribute.KeyV
 	return span, &HeaderCarrier{Carrier: carrier}
 }
 
-func StartMqConsumerTrace(ctx context.Context, name string, msgStr string, kv ...attribute.KeyValue) trace.Span {
+func StartMqConsumerTrace(ctx context.Context, name string, carrierStr string, kv ...attribute.KeyValue) trace.Span {
 	var carrier HeaderCarrier
-	_ = json.Unmarshal([]byte(msgStr), &carrier)
-	wireContext := otel.GetTextMapPropagator().Extract(ctx, carrier.Carrier)
+	err := json.Unmarshal([]byte(carrierStr), &carrier)
+	if err != nil {
+		carrier.Carrier = &propagation.HeaderCarrier{}
+	}
+	wireCtx := otel.GetTextMapPropagator().Extract(ctx, carrier.Carrier)
 	tracer := otel.GetTracerProvider().Tracer(gozerotrace.TraceName)
-	_, span := tracer.Start(wireContext, name, oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
+	_, span := tracer.Start(wireCtx, name, oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
 	span.AddEvent(name, oteltrace.WithAttributes(kv...))
 	return span
 }

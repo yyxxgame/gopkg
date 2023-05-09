@@ -6,7 +6,9 @@ require (
 	github.com/Shopify/sarama v1.38.1
 	github.com/confluentinc/confluent-kafka-go/v2 v2.1.0
 	github.com/olivere/elastic/v7 v7.0.32
+	github.com/segmentio/kafka-go v0.4.40
 	github.com/stretchr/testify v1.8.2
+	github.com/zeromicro/go-queue v1.1.8
 	github.com/zeromicro/go-zero v1.5.2
 	go.etcd.io/etcd/api/v3 v3.5.8
 	go.etcd.io/etcd/client/v3 v3.5.8
