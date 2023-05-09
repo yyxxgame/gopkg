@@ -6,7 +6,6 @@ package xtrace
 
 import (
 	"context"
-	"encoding/json"
 	gozerotrace "github.com/zeromicro/go-zero/core/trace"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -15,26 +14,25 @@ import (
 	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
-type HeaderCarrier struct {
+type MqMsg struct {
 	Carrier *propagation.HeaderCarrier `json:"carrier"`
+	Body    string                     `json:"body"`
 }
 
-func StartMqProducerTrace(ctx context.Context, name string, kv ...attribute.KeyValue) (trace.Span, *HeaderCarrier) {
+func StartMqProducerTrace(ctx context.Context, name string, kv ...attribute.KeyValue) (trace.Span, *MqMsg) {
 	tracer := otel.GetTracerProvider().Tracer(gozerotrace.TraceName)
 	spanCtx, span := tracer.Start(ctx, name, oteltrace.WithSpanKind(oteltrace.SpanKindProducer))
 	carrier := &propagation.HeaderCarrier{}
 	otel.GetTextMapPropagator().Inject(spanCtx, carrier)
 	span.AddEvent(name, oteltrace.WithAttributes(kv...))
-	return span, &HeaderCarrier{Carrier: carrier}
+	return span, &MqMsg{Carrier: carrier}
 }
 
-func StartMqConsumerTrace(ctx context.Context, name string, carrierStr string, kv ...attribute.KeyValue) trace.Span {
-	var carrier HeaderCarrier
-	err := json.Unmarshal([]byte(carrierStr), &carrier)
-	if err != nil {
-		carrier.Carrier = &propagation.HeaderCarrier{}
+func StartMqConsumerTrace(ctx context.Context, name string, mqMsg *MqMsg, kv ...attribute.KeyValue) trace.Span {
+	if mqMsg.Carrier == nil {
+		mqMsg.Carrier = &propagation.HeaderCarrier{}
 	}
-	wireCtx := otel.GetTextMapPropagator().Extract(ctx, carrier.Carrier)
+	wireCtx := otel.GetTextMapPropagator().Extract(ctx, mqMsg.Carrier)
 	tracer := otel.GetTracerProvider().Tracer(gozerotrace.TraceName)
 	_, span := tracer.Start(wireCtx, name, oteltrace.WithSpanKind(oteltrace.SpanKindConsumer))
 	span.AddEvent(name, oteltrace.WithAttributes(kv...))

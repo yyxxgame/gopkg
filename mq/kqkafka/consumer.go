@@ -6,6 +6,7 @@ package kqkafka
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/yyxxgame/gopkg/xtrace"
 	"github.com/zeromicro/go-queue/kq"
@@ -33,13 +34,22 @@ func NewConsumer(conf kq.KqConf, handler RunHandle) ConsumerInst {
 	return &Consumer{
 		conf: conf,
 		handler: func(k, v string) error {
+			var mqMsg xtrace.MqMsg
+			err := json.Unmarshal([]byte(v), &mqMsg)
+			if err != nil {
+				logx.Error(err)
+			}
 			ctx := context.Background()
 			span := xtrace.StartMqConsumerTrace(
-				ctx, fmt.Sprintf("%s.%s", conf.Group, conf.Topic), k, attribute.String("params", v),
+				ctx, fmt.Sprintf("%s.%s", conf.Group, conf.Topic), &mqMsg,
+				attribute.String("topic", conf.Topic),
+				attribute.String("params", v),
 			)
 			defer span.End()
-			return handler(trace.ContextWithSpan(ctx, span), k, v)
-
+			if mqMsg.Body == "" {
+				return handler(trace.ContextWithSpan(ctx, span), k, v)
+			}
+			return handler(trace.ContextWithSpan(ctx, span), k, mqMsg.Body)
 		},
 	}
 }
