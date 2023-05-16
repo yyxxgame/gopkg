@@ -35,10 +35,7 @@ func NewConsumer(conf kq.KqConf, handler RunHandle) ConsumerInst {
 		conf: conf,
 		handler: func(k, v string) error {
 			var mqMsg xtrace.MqMsg
-			err := json.Unmarshal([]byte(v), &mqMsg)
-			if err != nil {
-				logx.Error(err)
-			}
+			_ = json.Unmarshal([]byte(v), &mqMsg)
 			ctx := context.Background()
 			span := xtrace.StartMqConsumerTrace(
 				ctx, fmt.Sprintf("%s.%s", conf.Group, conf.Topic), &mqMsg,
