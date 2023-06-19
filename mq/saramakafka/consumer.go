@@ -7,9 +7,10 @@ package saramakafka
 import (
 	"context"
 	"github.com/Shopify/sarama"
-	"github.com/yyxxgame/gopkg/syncx/gopool"
+	"github.com/rcrowley/go-metrics"
 	"github.com/yyxxgame/gopkg/xtrace"
 	"github.com/zeromicro/go-zero/core/logx"
+	"github.com/zeromicro/go-zero/core/threading"
 	oteltrace "go.opentelemetry.io/otel/trace"
 	"sync"
 )
@@ -43,6 +44,9 @@ func NewSaramaConsumer(brokers, topics []string, groupId string, opts ...Option)
 		opt(c.config)
 	}
 
+	// 关闭内置的采集，可能会引起oom
+	metrics.UseNilMetrics = true
+
 	config := sarama.NewConfig()
 	config.Version = sarama.V1_0_0_0
 	config.Consumer.Offsets.Initial = sarama.OffsetNewest
@@ -62,7 +66,7 @@ func NewSaramaConsumer(brokers, topics []string, groupId string, opts ...Option)
 
 func (c *consumer) Looper(handler ConsumerHandler) {
 	c.handler = handler
-	gopool.Go(func() {
+	threading.GoSafe(func() {
 		for {
 			if err := c.Consume(context.Background(), c.topics, c); err != nil {
 				logx.Error(err.Error())
