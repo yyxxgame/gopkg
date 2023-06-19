@@ -7,6 +7,7 @@ package saramakafka
 import (
 	"context"
 	"github.com/Shopify/sarama"
+	"github.com/rcrowley/go-metrics"
 	"github.com/yyxxgame/gopkg/mq"
 	"github.com/yyxxgame/gopkg/xtrace"
 	"github.com/zeromicro/go-zero/core/logx"
@@ -35,6 +36,9 @@ func NewSaramaSyncProducer(brokers []string, opts ...Option) IProducer {
 	for _, opt := range opts {
 		opt(p.config)
 	}
+
+	// 关闭内置的采集，可能会引起oom
+	metrics.UseNilMetrics = true
 
 	config := sarama.NewConfig()
 	config.Producer.Return.Successes = true
@@ -82,9 +86,9 @@ func (p *syncProducer) PublishCtx(ctx context.Context, topic, key string, bMsg [
 		return xtrace.WithTraceHook(ctx, p.tracer, oteltrace.SpanKindProducer, "saramakafka.PublishCtx.SendMessage", func(ctx context.Context) error {
 			return p.publishMessage(message)
 		},
-			attribute.String(mq.TraceKafkaTopic, topic),
-			attribute.String(mq.TraceKafkaKey, key),
-			attribute.String(mq.TraceKafkaPayload, string(bMsg)))
+			attribute.String(mq.TraceMqTopic, topic),
+			attribute.String(mq.TraceMqKey, key),
+			attribute.String(mq.TraceMqPayload, string(bMsg)))
 	} else {
 		return p.publishMessage(message)
 	}
