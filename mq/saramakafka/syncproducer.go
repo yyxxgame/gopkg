@@ -7,7 +7,6 @@ package saramakafka
 import (
 	"context"
 	"github.com/Shopify/sarama"
-	"github.com/rcrowley/go-metrics"
 	"github.com/yyxxgame/gopkg/mq"
 	"github.com/yyxxgame/gopkg/xtrace"
 	"github.com/zeromicro/go-zero/core/logx"
@@ -36,9 +35,6 @@ func NewSaramaSyncProducer(brokers []string, opts ...Option) IProducer {
 	for _, opt := range opts {
 		opt(p.config)
 	}
-
-	// 关闭内置的采集，可能会引起oom
-	metrics.UseNilMetrics = true
 
 	config := sarama.NewConfig()
 	config.Producer.Return.Successes = true
