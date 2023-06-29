@@ -7,11 +7,11 @@ package ckafka
 import (
 	"context"
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
+	"github.com/yyxxgame/gopkg/syncx/gopool"
 	"github.com/yyxxgame/gopkg/xtrace"
 	"github.com/zeromicro/go-zero/core/lang"
 	"github.com/zeromicro/go-zero/core/logx"
 	"github.com/zeromicro/go-zero/core/syncx"
-	"github.com/zeromicro/go-zero/core/threading"
 	"go.opentelemetry.io/otel/attribute"
 	oteltrace "go.opentelemetry.io/otel/trace"
 	"strings"
@@ -72,7 +72,7 @@ func NewCkafkaConsumer(brokers, topics []string, groupId string, opts ...Option)
 }
 
 func (c *consumer) Looper(handler ConsumerHandler) {
-	threading.GoSafe(func() {
+	gopool.Go(func() {
 		for !c.done.True() {
 			select {
 			case <-c.signal:

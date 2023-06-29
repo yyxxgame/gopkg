@@ -8,10 +8,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/yyxxgame/gopkg/syncx/gopool"
 	"github.com/yyxxgame/gopkg/xtrace"
 	"github.com/zeromicro/go-queue/kq"
 	"github.com/zeromicro/go-zero/core/logx"
-	"github.com/zeromicro/go-zero/core/threading"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -52,7 +52,7 @@ func NewConsumer(conf kq.KqConf, handler RunHandle) ConsumerInst {
 }
 
 func (sel *Consumer) Start() {
-	threading.GoSafe(func() {
+	gopool.Go(func() {
 		q := kq.MustNewQueue(sel.conf, kq.WithHandle(sel.handler))
 		defer q.Stop()
 		q.Start()

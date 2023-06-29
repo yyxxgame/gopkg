@@ -9,9 +9,9 @@ import (
 	"fmt"
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/yyxxgame/gopkg/mq"
+	"github.com/yyxxgame/gopkg/syncx/gopool"
 	"github.com/yyxxgame/gopkg/xtrace"
 	"github.com/zeromicro/go-zero/core/logx"
-	"github.com/zeromicro/go-zero/core/threading"
 	"go.opentelemetry.io/otel/attribute"
 	oteltrace "go.opentelemetry.io/otel/trace"
 	"strings"
@@ -110,7 +110,7 @@ func NewCkafkaProducer(brokers []string, opts ...Option) IProducer {
 }
 
 func (p *producer) install() {
-	threading.GoSafe(func() {
+	gopool.Go(func() {
 		for event := range p.Events() {
 			switch message := event.(type) {
 			case *kafka.Message:
