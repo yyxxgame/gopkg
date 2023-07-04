@@ -107,7 +107,7 @@ func (c *consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim saram
 						return c.handleMessageCtx(ctx, session, msg)
 					},
 						attribute.String(mq.TraceMqTopic, msg.Topic),
-						attribute.String(mq.TraceMqKey, string(msg.Value)),
+						attribute.String(mq.TraceMqKey, string(msg.Key)),
 						attribute.String(mq.TraceMqPayload, string(msg.Value)))
 				} else {
 					return c.handleMessage(session, msg)

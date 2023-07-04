@@ -5,6 +5,7 @@
 package saramakafka
 
 import (
+	"context"
 	"github.com/Shopify/sarama"
 	"testing"
 	"time"
@@ -24,7 +25,7 @@ func TestSaramaKafkaProducer(t *testing.T) {
 func TestSaramaKafkaConsumer(t *testing.T) {
 	//exit := make(chan int)
 	c := NewSaramaConsumer(brokers, topics, groupId)
-	c.LooperSync(func(message *sarama.ConsumerMessage) error {
+	c.LooperSync(func(ctx context.Context, message *sarama.ConsumerMessage) error {
 		t.Logf("handle message, key: %s, value: %s", message.Key, message.Value)
 		time.Sleep(2 * time.Second)
 		return nil
