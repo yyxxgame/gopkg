@@ -80,7 +80,7 @@ func (c *consumer) Looper(topic string, handler ConsumerHandler) {
 	c.ServeMux.HandleFunc(formatTopic, c.handleMessage)
 	gopool.Go(func() {
 		if err := c.Server.Run(c.ServeMux); err != nil {
-			logx.Error(err.Error())
+			logx.Errorf("rmq server run on error: %v", err.Error())
 			panic(err.Error())
 		}
 	})
