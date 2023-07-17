@@ -86,7 +86,7 @@ func (c *consumer) Looper(handler ConsumerHandler) {
 				case *kafka.Message:
 					traceId := GetTraceIdFromHeader(e)
 					if c.tracer != nil && traceId != "" {
-						_ = xtrace.RunWithTraceHook(c.tracer, oteltrace.SpanKindConsumer, traceId, "ckafka.Looper.handleMessage", func(ctx context.Context) error {
+						_ = xtrace.RunWithTraceHook(c.tracer, oteltrace.SpanKindConsumer, traceId, "ckafka.LooperSync.handleMessage", func(ctx context.Context) error {
 							return c.handleMessage(e, handler)
 						},
 							attribute.String(ckafkaTraceKey, string(e.Key)),
@@ -111,15 +111,15 @@ func (c *consumer) Looper(handler ConsumerHandler) {
 
 func (c *consumer) handleMessage(message *kafka.Message, handler ConsumerHandler) error {
 	if err := handler(message); err != nil {
-		logx.Errorf("ckafka.Looper.onMessage on error: %v", err)
+		logx.Errorf("ckafka.LooperSync.onMessage on error: %v", err)
 		return err
 	} else {
 		if _, err = c.StoreMessage(message); err != nil {
-			logx.Errorf("ckafka.Looper.StoreMessage on error: %v", err)
+			logx.Errorf("ckafka.LooperSync.StoreMessage on error: %v", err)
 			return err
 		} else {
 			if _, err := c.CommitMessage(message); err != nil {
-				logx.Errorf("ckafka.Looper.StoreMessage on error: %v", err)
+				logx.Errorf("ckafka.LooperSync.StoreMessage on error: %v", err)
 				return err
 			}
 		}

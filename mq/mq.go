@@ -5,8 +5,8 @@
 package mq
 
 const (
-	TraceId        = "x-trace-id"
-	TraceMqTopic   = "x-kafka-topic"
-	TraceMqKey     = "x-kafka-key"
-	TraceMqPayload = "x-kafka-payload"
+	TraceId        = "x-mq-trace-id"
+	TraceMqTopic   = "x-mq-topic"
+	TraceMqKey     = "x-mq-key"
+	TraceMqPayload = "x-mq-payload"
 )
