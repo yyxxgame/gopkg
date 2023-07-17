@@ -32,4 +32,5 @@ func TestSaramaKafkaConsumer(t *testing.T) {
 	})
 
 	defer c.Release()
+	//<-exit
 }

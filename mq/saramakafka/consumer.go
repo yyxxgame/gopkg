@@ -86,7 +86,7 @@ func (c *consumer) Release() {
 		c.wg.Done()
 	}
 	c.PauseAll()
-	_ = c.Close()
+	c.Close()
 }
 
 func (c *consumer) Setup(session sarama.ConsumerGroupSession) error {
