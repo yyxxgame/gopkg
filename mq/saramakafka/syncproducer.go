@@ -23,6 +23,7 @@ type (
 
 	syncProducer struct {
 		*config
+		//topic   string
 		sarama.SyncProducer
 	}
 )
