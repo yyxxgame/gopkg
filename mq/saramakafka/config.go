@@ -5,7 +5,7 @@
 package saramakafka
 
 import (
-	"github.com/Shopify/sarama"
+	"github.com/IBM/sarama"
 	oteltrace "go.opentelemetry.io/otel/trace"
 )
 

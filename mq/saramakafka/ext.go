@@ -5,7 +5,7 @@
 package saramakafka
 
 import (
-	"github.com/Shopify/sarama"
+	"github.com/IBM/sarama"
 	"github.com/yyxxgame/gopkg/mq"
 )
 
