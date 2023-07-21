@@ -3,7 +3,7 @@ module github.com/yyxxgame/gopkg
 go 1.18
 
 require (
-	github.com/Shopify/sarama v1.38.1
+	github.com/IBM/sarama v1.40.0
 	github.com/confluentinc/confluent-kafka-go/v2 v2.1.0
 	github.com/hibiken/asynq v0.24.1
 	github.com/olivere/elastic/v7 v7.0.32
@@ -46,7 +46,7 @@ require (
 	github.com/jcmturner/gokrb5/v8 v8.4.4 // indirect
 	github.com/jcmturner/rpc/v2 v2.0.3 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
-	github.com/klauspost/compress v1.16.6 // indirect
+	github.com/klauspost/compress v1.16.7 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.17 // indirect

@@ -6,7 +6,7 @@ package saramakafka
 
 import (
 	"context"
-	"github.com/Shopify/sarama"
+	"github.com/IBM/sarama"
 	"testing"
 	"time"
 )
@@ -23,7 +23,6 @@ func TestSaramaKafkaProducer(t *testing.T) {
 }
 
 func TestSaramaKafkaConsumer(t *testing.T) {
-	//exit := make(chan int)
 	c := NewSaramaConsumer(brokers, topics, groupId)
 	c.LooperSync(func(ctx context.Context, message *sarama.ConsumerMessage) error {
 		t.Logf("handle message, key: %s, value: %s", message.Key, message.Value)
