@@ -52,11 +52,16 @@ func NewSaramaSyncProducer(brokers []string, opts ...Option) IProducer {
 	p.brokers = brokers
 
 	// Initialize the client
-	if producer, err := sarama.NewSyncProducer(p.brokers, config); err != nil {
-		logx.Errorf("saramakafka NewSyncProducer on error: %v", err)
+	if client, err := sarama.NewClient(p.brokers, config); err != nil {
+		logx.Errorf("saramakafka.NewSaramaSyncProducer.NewClient error: %v", err)
 		panic(err)
 	} else {
-		p.SyncProducer = producer
+		if producer, err := sarama.NewSyncProducerFromClient(client); err != nil {
+			logx.Errorf("saramakafka.NewSaramaSyncProducer.NewSyncProducerFromClient error: %v", err)
+			panic(err)
+		} else {
+			p.SyncProducer = producer
+		}
 	}
 	return p
 }
@@ -100,5 +105,5 @@ func (p *syncProducer) publishMessage(message *sarama.ProducerMessage) error {
 }
 
 func (p *syncProducer) Release() {
-	p.Close()
+	_ = p.Close()
 }
