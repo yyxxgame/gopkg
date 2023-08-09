@@ -24,13 +24,16 @@ type (
 	}
 
 	consumer struct {
-		sarama.ConsumerGroup
+		client  sarama.Client
+		group   sarama.ConsumerGroup
 		groupId string
 		topics  []string
 		handler ConsumerHandler
 		wg      sync.WaitGroup
 		runSync bool
 		*config
+		enableBroadcastModel bool
+		resetOffsetOnce      sync.Once
 	}
 
 	ConsumerHandler func(ctx context.Context, message *sarama.ConsumerMessage) error
@@ -52,13 +55,54 @@ func NewSaramaConsumer(brokers, topics []string, groupId string, opts ...Option)
 	config.Consumer.Offsets.Retry.Max = 99
 	config.Consumer.Offsets.AutoCommit.Enable = true
 
-	if cg, err := sarama.NewConsumerGroup(brokers, groupId, config); err != nil {
-		logx.Errorf("saramakafka.NewConsumerGroupAuto.NewConsumerGroup error: %v", err)
+	if client, err := sarama.NewClient(brokers, config); err != nil {
+		logx.Errorf("saramakafka.NewSaramaConsumer.NewClient error: %v", err)
 		panic(err)
 	} else {
-		c.ConsumerGroup = cg
+		if cg, err := sarama.NewConsumerGroupFromClient(groupId, client); err != nil {
+			logx.Errorf("saramakafka.NewSaramaConsumer.NewConsumerGroupFromClient error: %v", err)
+			panic(err)
+		} else {
+			c.client = client
+			c.group = cg
+		}
 	}
+
 	c.topics = topics
+	return c
+}
+
+func NewSaramaBroadcastConsumer(brokers, topics []string, groupId string, opts ...Option) IConsumer {
+	c := &consumer{
+		config: &config{},
+	}
+
+	for _, opt := range opts {
+		opt(c.config)
+	}
+
+	config := sarama.NewConfig()
+	config.Version = sarama.V1_0_0_0
+	config.Consumer.Offsets.Initial = sarama.OffsetNewest
+	config.Consumer.Return.Errors = true
+	config.Consumer.Offsets.Retry.Max = 99
+	config.Consumer.Offsets.AutoCommit.Enable = true
+
+	if client, err := sarama.NewClient(brokers, config); err != nil {
+		logx.Errorf("saramakafka.NewSaramaBroadcastConsumer.NewClient error: %v", err)
+		panic(err)
+	} else {
+		if cg, err := sarama.NewConsumerGroupFromClient(groupId, client); err != nil {
+			logx.Errorf("saramakafka.NewSaramaBroadcastConsumer.NewConsumerGroupFromClient error: %v", err)
+			panic(err)
+		} else {
+			c.client = client
+			c.group = cg
+		}
+	}
+
+	c.topics = topics
+	c.enableBroadcastModel = true
 	return c
 }
 
@@ -66,7 +110,7 @@ func (c *consumer) Looper(handler ConsumerHandler) {
 	c.handler = handler
 	gopool.Go(func() {
 		for {
-			if err := c.Consume(context.Background(), c.topics, c); err != nil {
+			if err := c.group.Consume(context.Background(), c.topics, c); err != nil {
 				logx.Error(err.Error())
 				panic(err.Error())
 			}
@@ -85,11 +129,27 @@ func (c *consumer) Release() {
 	if c.runSync {
 		c.wg.Done()
 	}
-	c.PauseAll()
-	_ = c.Close()
+	c.group.PauseAll()
+	_ = c.group.Close()
+	_ = c.client.Close()
 }
 
 func (c *consumer) Setup(session sarama.ConsumerGroupSession) error {
+	c.resetOffsetOnce.Do(func() {
+		if !c.enableBroadcastModel {
+			return
+		}
+		for topic, partitions := range session.Claims() {
+			for _, partition := range partitions {
+				if offset, err := c.client.GetOffset(topic, partition, sarama.OffsetNewest); err != nil {
+					continue
+				} else {
+					logx.Infof("reset offset on setup: %d", offset)
+					session.MarkOffset(topic, partition, offset, "")
+				}
+			}
+		}
+	})
 	return nil
 }
 
@@ -124,7 +184,7 @@ func (c *consumer) handleMessage(session sarama.ConsumerGroupSession, msg *saram
 
 func (c *consumer) handleMessageCtx(ctx context.Context, session sarama.ConsumerGroupSession, msg *sarama.ConsumerMessage) error {
 	if err := c.handler(ctx, msg); err != nil {
-		logx.WithContext(ctx).Errorf("saramakafka.ConsumeClaim.handleMessage on error: %v", err)
+		logx.WithContext(ctx).Errorf("saramakafka.ConsumeClaim.handleMessageCtx on error: %v", err)
 		return err
 	} else {
 		session.MarkMessage(msg, "")
