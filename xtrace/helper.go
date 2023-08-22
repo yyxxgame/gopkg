@@ -20,6 +20,7 @@ func GetTraceId(ctx context.Context) trace.TraceID {
 		get trace id
 	*/
 	span := trace.SpanFromContext(ctx)
+	defer span.End()
 	return span.SpanContext().TraceID()
 }
 
@@ -28,6 +29,7 @@ func AddTags(ctx context.Context, kv ...attribute.KeyValue) {
 		add tags by ctx
 	*/
 	span := trace.SpanFromContext(ctx)
+	defer span.End()
 	span.SetAttributes(kv...)
 }
 
@@ -43,6 +45,7 @@ func AddEvent(ctx context.Context, name string, kv ...attribute.KeyValue) {
 		add evnet by ctx
 	*/
 	span := trace.SpanFromContext(ctx)
+	defer span.End()
 	span.AddEvent(name, trace.WithAttributes(kv...))
 }
 
