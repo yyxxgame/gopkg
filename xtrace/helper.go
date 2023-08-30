@@ -9,7 +9,9 @@ import (
 	"context"
 	"fmt"
 	"github.com/zeromicro/go-zero/rest"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 	"io"
 	"net/http"
@@ -22,6 +24,12 @@ func GetTraceId(ctx context.Context) trace.TraceID {
 	span := trace.SpanFromContext(ctx)
 	defer span.End()
 	return span.SpanContext().TraceID()
+}
+
+func GetCarrier(ctx context.Context) *propagation.HeaderCarrier {
+	carrier := &propagation.HeaderCarrier{}
+	otel.GetTextMapPropagator().Inject(ctx, carrier)
+	return carrier
 }
 
 func AddTags(ctx context.Context, kv ...attribute.KeyValue) {
