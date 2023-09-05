@@ -51,7 +51,6 @@ func AddEvent(ctx context.Context, name string, kv ...attribute.KeyValue) {
 		add evnet by ctx
 	*/
 	span := trace.SpanFromContext(ctx)
-	defer span.End()
 	span.AddEvent(name, trace.WithAttributes(kv...))
 }
 
