@@ -99,7 +99,7 @@ func (p *syncProducer) publishMessage(message *sarama.ProducerMessage) error {
 		logx.Errorf("saramakafka.PublishCtx.SendMessage to topic: %s, on error: %v", message.Topic, err)
 		return err
 	} else {
-		logx.Errorf("saramakafka.PublishCtx.SendMessage to topic: %s, on success, partition: %d, offset: %v", message.Topic, partition, offset)
+		logx.Infof("saramakafka.PublishCtx.SendMessage to topic: %s, on success, partition: %d, offset: %v", message.Topic, partition, offset)
 		return nil
 	}
 }
