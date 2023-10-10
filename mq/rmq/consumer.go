@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"github.com/hibiken/asynq"
 	"github.com/yyxxgame/gopkg/mq"
-	"github.com/yyxxgame/gopkg/syncx/gopool"
+	"github.com/yyxxgame/gopkg/xsync/gopool"
 	"github.com/yyxxgame/gopkg/xtrace"
 	"github.com/zeromicro/go-zero/core/logx"
 	"go.opentelemetry.io/otel/attribute"
