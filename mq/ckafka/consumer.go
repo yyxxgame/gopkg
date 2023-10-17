@@ -7,7 +7,7 @@ package ckafka
 import (
 	"context"
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
-	"github.com/yyxxgame/gopkg/xsync/gopool"
+	"github.com/yyxxgame/gopkg/syncx/gopool"
 	"github.com/yyxxgame/gopkg/xtrace"
 	"github.com/zeromicro/go-zero/core/lang"
 	"github.com/zeromicro/go-zero/core/logx"
