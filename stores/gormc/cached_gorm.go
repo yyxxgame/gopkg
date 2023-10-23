@@ -53,31 +53,35 @@ type (
 
 	CachedConn struct {
 		db                 *gorm.DB
-		tracer             oteltrace.Tracer
 		cache              cache.Cache
+		tracer             oteltrace.Tracer
 		unstableExpiryTime mathx.Unstable
 	}
 )
 
 // NewConn returns a CachedConn with a redis cluster cache.
-func NewConn(db *gorm.DB, tracer oteltrace.Tracer, c cache.CacheConf, opts ...cache.Option) *CachedConn {
-	cc := cache.New(c, singleFlights, stats, ErrNotFound, opts...)
-	return NewConnWithCache(db, tracer, cc)
+func NewConn(db *gorm.DB, c cache.CacheConf, opts ...Option) *CachedConn {
+	o := newOptions(opts...)
+	cc := cache.New(c, singleFlights, stats, ErrNotFound, cache.WithExpiry(o.Expiry), cache.WithNotFoundExpiry(o.NotFoundExpiry))
+	return newConnWithCache(db, cc, o)
 }
 
 // NewNodeConn returns a CachedConn with a redis node cache.
-func NewNodeConn(db *gorm.DB, tracer oteltrace.Tracer, rds *redis.Redis, opts ...cache.Option) *CachedConn {
-	cc := cache.NewNode(rds, singleFlights, stats, ErrNotFound, opts...)
-	return NewConnWithCache(db, tracer, cc)
+func NewNodeConn(db *gorm.DB, rds *redis.Redis, opts ...Option) *CachedConn {
+	o := newOptions(opts...)
+	cc := cache.NewNode(rds, singleFlights, stats, ErrNotFound, cache.WithExpiry(o.Expiry), cache.WithNotFoundExpiry(o.NotFoundExpiry))
+	return newConnWithCache(db, cc, o)
 }
 
 // NewConnWithCache returns a CachedConn with a custom cache.
-func NewConnWithCache(db *gorm.DB, tracer oteltrace.Tracer, c cache.Cache) *CachedConn {
-	_ = db.Use(newMetricPlugin())
+func newConnWithCache(db *gorm.DB, c cache.Cache, o Options) *CachedConn {
+	if o.enableMetric {
+		_ = db.Use(newMetricPlugin())
+	}
 	return &CachedConn{
 		db:                 db,
-		tracer:             tracer,
 		cache:              c,
+		tracer:             o.tracer,
 		unstableExpiryTime: mathx.NewUnstable(expiryDeviation),
 	}
 }
