@@ -65,8 +65,8 @@ func WithTracer(tracer oteltrace.Tracer) Option {
 	}
 }
 
-func WithMetric(enable bool) Option {
+func WithMetric() Option {
 	return func(o *Options) {
-		o.enableMetric = enable
+		o.enableMetric = true
 	}
 }
