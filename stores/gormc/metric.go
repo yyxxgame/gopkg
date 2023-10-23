@@ -32,18 +32,14 @@ var (
 	})
 )
 
-type metricPlugin struct {
+type MetricPlugin struct {
 }
 
-func newMetricPlugin() *metricPlugin {
-	return &metricPlugin{}
-}
-
-func (p *metricPlugin) Name() string {
+func (p *MetricPlugin) Name() string {
 	return namespace
 }
 
-func (p *metricPlugin) Initialize(db *gorm.DB) error {
+func (p *MetricPlugin) Initialize(db *gorm.DB) error {
 	if err := p.addCreateHooks(db); err != nil {
 		return err
 	}
@@ -51,49 +47,30 @@ func (p *metricPlugin) Initialize(db *gorm.DB) error {
 	if err := p.addQueryHooks(db); err != nil {
 		return err
 	}
-
-	if err := db.Callback().Query().After("gormc:queryAfter").Register("gormc:queryAfter:metric", func(db *gorm.DB) {
-
-	}); err != nil {
+	if err := p.addUpdateHooks(db); err != nil {
 		return err
 	}
-
-	if err := db.Callback().Update().After("gormc:updateAfter").Register("gormc:updateAfter:metric", func(db *gorm.DB) {
-
-	}); err != nil {
+	if err := p.addDeleteHooks(db); err != nil {
 		return err
 	}
-
-	if err := db.Callback().Delete().After("gormc:deleteAfter").Register("gormc:deleteAfter:metric", func(db *gorm.DB) {
-
-	}); err != nil {
+	if err := p.addRowHooks(db); err != nil {
 		return err
 	}
-
-	if err := db.Callback().Row().After("gormc:rowAfter").Register("gormc:rowAfter:metric", func(db *gorm.DB) {
-
-	}); err != nil {
+	if err := p.addRawHooks(db); err != nil {
 		return err
 	}
-
-	if err := db.Callback().Raw().After("gormc:rawAfter").Register("gormc:rawAfter:metric", func(db *gorm.DB) {
-
-	}); err != nil {
-		return err
-	}
-
 	return nil
 }
 
-func (p *metricPlugin) addCreateHooks(db *gorm.DB) error {
-	if err := db.Callback().Create().Before("gormc:createBefore").Register("gormc:createBefore:metric", func(db *gorm.DB) {
+func (p *MetricPlugin) addCreateHooks(db *gorm.DB) error {
+	if err := db.Callback().Create().Before("gormc:create_before").Register("gormc:create_before:metric", func(db *gorm.DB) {
 		ts := time.Now().Unix()
 		db.InstanceSet("gormc:create_ts", ts)
 		//TODO add trace span?
 	}); err != nil {
 		return err
 	}
-	if err := db.Callback().Create().After("gormc:createAfter").Register("gormc:createAfter:metric", func(db *gorm.DB) {
+	if err := db.Callback().Create().After("gormc:create_after").Register("gormc:create_after:metric", func(db *gorm.DB) {
 		if ts, ok := db.InstanceGet("gormc:create_ts"); !ok {
 			return
 		} else {
@@ -109,15 +86,15 @@ func (p *metricPlugin) addCreateHooks(db *gorm.DB) error {
 	return nil
 }
 
-func (p *metricPlugin) addQueryHooks(db *gorm.DB) error {
-	if err := db.Callback().Query().Before("gormc:queryBefore").Register("gormc:queryBefore:metric", func(db *gorm.DB) {
+func (p *MetricPlugin) addQueryHooks(db *gorm.DB) error {
+	if err := db.Callback().Query().Before("gormc:query_before").Register("gormc:query_before:metric", func(db *gorm.DB) {
 		ts := time.Now().Unix()
 		db.InstanceSet("gormc:create_ts", ts)
 		//TODO add trace span?
 	}); err != nil {
 		return err
 	}
-	if err := db.Callback().Query().After("gormc:queryAfter").Register("gormc:queryAfter:metric", func(db *gorm.DB) {
+	if err := db.Callback().Query().After("gormc:query_after").Register("gormc:query_after:metric", func(db *gorm.DB) {
 		if ts, ok := db.InstanceGet("gormc:create_ts"); !ok {
 			return
 		} else {
@@ -133,15 +110,15 @@ func (p *metricPlugin) addQueryHooks(db *gorm.DB) error {
 	return nil
 }
 
-func (p *metricPlugin) addUpdateHooks(db *gorm.DB) error {
-	if err := db.Callback().Update().Before("gormc:updateBefore").Register("gormc:updateBefore:metric", func(db *gorm.DB) {
+func (p *MetricPlugin) addUpdateHooks(db *gorm.DB) error {
+	if err := db.Callback().Update().Before("gormc:update_before").Register("gormc:update_before:metric", func(db *gorm.DB) {
 		ts := time.Now().Unix()
 		db.InstanceSet("gormc:create_ts", ts)
 		//TODO add trace span?
 	}); err != nil {
 		return err
 	}
-	if err := db.Callback().Update().After("gormc:updateAfter").Register("gormc:updateAfter:metric", func(db *gorm.DB) {
+	if err := db.Callback().Update().After("gormc:update_after").Register("gormc:update_after:metric", func(db *gorm.DB) {
 		if ts, ok := db.InstanceGet("gormc:create_ts"); !ok {
 			return
 		} else {
@@ -157,15 +134,15 @@ func (p *metricPlugin) addUpdateHooks(db *gorm.DB) error {
 	return nil
 }
 
-func (p *metricPlugin) addDeleteHooks(db *gorm.DB) error {
-	if err := db.Callback().Delete().Before("gormc:deleteBefore").Register("gormc:deleteBefore:metric", func(db *gorm.DB) {
+func (p *MetricPlugin) addDeleteHooks(db *gorm.DB) error {
+	if err := db.Callback().Delete().Before("gormc:delete_before").Register("gormc:delete_before:metric", func(db *gorm.DB) {
 		ts := time.Now().Unix()
 		db.InstanceSet("gormc:create_ts", ts)
 		//TODO add trace span?
 	}); err != nil {
 		return err
 	}
-	if err := db.Callback().Delete().After("gormc:deleteAfter").Register("gormc:deleteAfter:metric", func(db *gorm.DB) {
+	if err := db.Callback().Delete().After("gormc:delete_after").Register("gormc:delete_after:metric", func(db *gorm.DB) {
 		if ts, ok := db.InstanceGet("gormc:create_ts"); !ok {
 			return
 		} else {
@@ -181,15 +158,15 @@ func (p *metricPlugin) addDeleteHooks(db *gorm.DB) error {
 	return nil
 }
 
-func (p *metricPlugin) addRowHooks(db *gorm.DB) error {
-	if err := db.Callback().Row().Before("gormc:rowBefore").Register("gormc:rowBefore:metric", func(db *gorm.DB) {
+func (p *MetricPlugin) addRowHooks(db *gorm.DB) error {
+	if err := db.Callback().Row().Before("gormc:row_before").Register("gormc:row_before:metric", func(db *gorm.DB) {
 		ts := time.Now().Unix()
 		db.InstanceSet("gormc:create_ts", ts)
 		//TODO add trace span?
 	}); err != nil {
 		return err
 	}
-	if err := db.Callback().Row().After("gormc:rowAfter").Register("gormc:rowAfter:metric", func(db *gorm.DB) {
+	if err := db.Callback().Row().After("gormc:row_after").Register("gormc:row_after:metric", func(db *gorm.DB) {
 		if ts, ok := db.InstanceGet("gormc:create_ts"); !ok {
 			return
 		} else {
@@ -205,15 +182,15 @@ func (p *metricPlugin) addRowHooks(db *gorm.DB) error {
 	return nil
 }
 
-func (p *metricPlugin) addRawHooks(db *gorm.DB) error {
-	if err := db.Callback().Raw().Before("gormc:rawBefore").Register("gormc:rawBefore:metric", func(db *gorm.DB) {
+func (p *MetricPlugin) addRawHooks(db *gorm.DB) error {
+	if err := db.Callback().Raw().Before("gormc:raw_before").Register("gormc:raw_before:metric", func(db *gorm.DB) {
 		ts := time.Now().Unix()
 		db.InstanceSet("gormc:create_ts", ts)
 		//TODO add trace span?
 	}); err != nil {
 		return err
 	}
-	if err := db.Callback().Raw().After("gormc:rawAfter").Register("gormc:rawAfter:metric", func(db *gorm.DB) {
+	if err := db.Callback().Raw().After("gormc:raw_after").Register("gormc:raw_after:metric", func(db *gorm.DB) {
 		if ts, ok := db.InstanceGet("gormc:create_ts"); !ok {
 			return
 		} else {

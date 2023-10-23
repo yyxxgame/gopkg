@@ -21,8 +21,7 @@ type (
 		//Expiry         time.Duration
 		//NotFoundExpiry time.Duration
 		cache.Options
-		tracer       oteltrace.Tracer
-		enableMetric bool
+		tracer oteltrace.Tracer
 	}
 
 	// Option defines the method to customize an Options.
@@ -62,11 +61,5 @@ func WithNotFoundExpiry(expiry time.Duration) Option {
 func WithTracer(tracer oteltrace.Tracer) Option {
 	return func(o *Options) {
 		o.tracer = tracer
-	}
-}
-
-func WithMetric() Option {
-	return func(o *Options) {
-		o.enableMetric = true
 	}
 }
