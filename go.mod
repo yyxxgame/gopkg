@@ -15,7 +15,6 @@ require (
 	go.etcd.io/etcd/client/v3 v3.5.9
 	go.opentelemetry.io/otel v1.14.0
 	go.opentelemetry.io/otel/trace v1.14.0
-	go.uber.org/zap v1.21.0
 	gorm.io/gorm v1.25.5
 )
 
