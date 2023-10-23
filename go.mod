@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/IBM/sarama v1.41.3
-	github.com/confluentinc/confluent-kafka-go/v2 v2.1.0
+	github.com/confluentinc/confluent-kafka-go/v2 v2.2.0
 	github.com/hibiken/asynq v0.24.1
 	github.com/olivere/elastic/v7 v7.0.32
 	github.com/pkg/errors v0.9.1
