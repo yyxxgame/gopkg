@@ -75,9 +75,6 @@ func NewNodeConn(db *gorm.DB, rds *redis.Redis, opts ...Option) *CachedConn {
 
 // NewConnWithCache returns a CachedConn with a custom cache.
 func newConnWithCache(db *gorm.DB, c cache.Cache, o Options) *CachedConn {
-	if o.enableMetric {
-		_ = db.Use(newMetricPlugin())
-	}
 	return &CachedConn{
 		db:                 db,
 		cache:              c,
