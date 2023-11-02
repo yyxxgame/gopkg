@@ -5,6 +5,7 @@ go 1.18
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/IBM/sarama v1.41.3
+	github.com/alicebob/miniredis/v2 v2.30.0
 	github.com/confluentinc/confluent-kafka-go/v2 v2.2.0
 	github.com/hibiken/asynq v0.24.1
 	github.com/olivere/elastic/v7 v7.0.32
@@ -22,6 +23,7 @@ require (
 )
 
 require (
+	github.com/alicebob/gopher-json v0.0.0-20200520072559-a9ecdc9d1d3a // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.2.0 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
@@ -75,6 +77,7 @@ require (
 	github.com/segmentio/kafka-go v0.4.38 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/spf13/cast v1.3.1 // indirect
+	github.com/yuin/gopher-lua v0.0.0-20220504180219-658193537a64 // indirect
 	go.etcd.io/etcd/client/pkg/v3 v3.5.9 // indirect
 	go.opentelemetry.io/otel/exporters/jaeger v1.14.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/internal/retry v1.14.0 // indirect

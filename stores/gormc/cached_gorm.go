@@ -45,11 +45,11 @@ type (
 	// ExecCtxFn defines the sql exec method.
 	ExecCtxFn func(conn *gorm.DB) error
 	// IndexQueryCtxFn defines the query method that based on unique indexes.
-	IndexQueryCtxFn func(conn *gorm.DB, v interface{}) (interface{}, error)
+	IndexQueryCtxFn func(conn *gorm.DB, value interface{}) (interface{}, error)
 	// PrimaryQueryCtxFn defines the query method that based on primary keys.
-	PrimaryQueryCtxFn func(conn *gorm.DB, v, primary interface{}) error
+	PrimaryQueryCtxFn func(conn *gorm.DB, value, primary interface{}) error
 	// QueryCtxFn defines the query method.
-	QueryCtxFn func(conn *gorm.DB, v interface{}) error
+	QueryCtxFn func(conn *gorm.DB, value interface{}) error
 
 	IGormc interface {
 		SetCache(key string, value interface{}) error
@@ -80,8 +80,8 @@ type (
 		ExecNoCacheCtx(ctx context.Context, execCtx ExecCtxFn) error
 		doExecNoCacheCtx(ctx context.Context, execCtx ExecCtxFn) error
 
-		Transact(callback func(db *gorm.DB) error, opts ...*sql.TxOptions) error
-		TransactCtx(ctx context.Context, callback func(db *gorm.DB) error, opts ...*sql.TxOptions) error
+		Transact(callback func(tx *gorm.DB) error, opts ...*sql.TxOptions) error
+		TransactCtx(ctx context.Context, callback func(tx *gorm.DB) error, opts ...*sql.TxOptions) error
 	}
 
 	cachedConn struct {
@@ -118,7 +118,7 @@ func newConnWithCache(db *gorm.DB, c cache.Cache, o Options) IGormc {
 
 // SetCache sets value into cache with given key.
 func (cc *cachedConn) SetCache(key string, value interface{}) error {
-	return cc.cache.SetCtx(context.Background(), key, value)
+	return cc.SetCacheCtx(context.Background(), key, value)
 }
 
 // SetCacheCtx sets value into cache with given key.
@@ -138,7 +138,7 @@ func (cc *cachedConn) SetCacheWithExpireCtx(ctx context.Context, key string, val
 
 // GetCache unmarshals cache with given key into value.
 func (cc *cachedConn) GetCache(key string, value interface{}) error {
-	return cc.cache.GetCtx(context.Background(), key, value)
+	return cc.GetCacheCtx(context.Background(), key, value)
 }
 
 // GetCacheCtx unmarshals cache with given key into value.
@@ -148,7 +148,7 @@ func (cc *cachedConn) GetCacheCtx(ctx context.Context, key string, value interfa
 
 // DelCache deletes cache with keys.
 func (cc *cachedConn) DelCache(keys ...string) error {
-	return cc.cache.DelCtx(context.Background(), keys...)
+	return cc.DelCacheCtx(context.Background(), keys...)
 }
 
 // DelCacheCtx deletes cache with keys.
@@ -288,12 +288,12 @@ func (cc *cachedConn) doExecNoCacheCtx(ctx context.Context, execCtx ExecCtxFn) e
 }
 
 // Transact runs given fn in transaction mode.
-func (cc *cachedConn) Transact(callback func(db *gorm.DB) error, opts ...*sql.TxOptions) error {
+func (cc *cachedConn) Transact(callback func(tx *gorm.DB) error, opts ...*sql.TxOptions) error {
 	return cc.TransactCtx(context.Background(), callback, opts...)
 }
 
 // TransactCtx runs given fn in transaction mode.
-func (cc *cachedConn) TransactCtx(ctx context.Context, callback func(db *gorm.DB) error, opts ...*sql.TxOptions) error {
+func (cc *cachedConn) TransactCtx(ctx context.Context, callback func(tx *gorm.DB) error, opts ...*sql.TxOptions) error {
 	return cc.db.WithContext(ctx).Transaction(callback, opts...)
 }
 
