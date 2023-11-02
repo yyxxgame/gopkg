@@ -52,6 +52,7 @@ func (m *testModel) FindOneByUsername(ctx context.Context, username string) (*Us
 	//TODO implement your logic
 	panic("implement your logic")
 }
+
 ```
 
 ## Use your model
