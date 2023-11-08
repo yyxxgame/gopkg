@@ -31,8 +31,8 @@ func GenerateIV(key []byte) []byte {
 	return iv
 }
 
-// AesCbcPkcs7paddingEncrypt AES/CBC/PKCS7Padding加密
-func AesCbcPkcs7paddingEncrypt(data, key []byte, iv []byte) ([]byte, error) {
+// CbcPkcs7paddingEncrypt AES/CBC/PKCS7Padding加密
+func CbcPkcs7paddingEncrypt(data, key []byte, iv []byte) ([]byte, error) {
 	if block, err := aes.NewCipher(key); err != nil {
 		return nil, err
 	} else {
@@ -45,8 +45,8 @@ func AesCbcPkcs7paddingEncrypt(data, key []byte, iv []byte) ([]byte, error) {
 	}
 }
 
-// AesCbcPkcs7paddingDecrypt AES/CBC/PKCS7Padding解密
-func AesCbcPkcs7paddingDecrypt(data, key []byte, iv []byte) ([]byte, error) {
+// CbcPkcs7paddingDecrypt AES/CBC/PKCS7Padding解密
+func CbcPkcs7paddingDecrypt(data, key []byte, iv []byte) ([]byte, error) {
 	if block, err := aes.NewCipher(key); err != nil {
 		return nil, err
 	} else {
