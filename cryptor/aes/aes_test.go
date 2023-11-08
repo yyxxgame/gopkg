@@ -14,11 +14,11 @@ func TestAESCbcEncryptAndDecrypt(t *testing.T) {
 	aesKey := []byte(stringx.Randn(16))
 	iv := GenerateIV(aesKey)
 	data := []byte(stringx.Randn(200))
-	enc, err := AesCbcPkcs7paddingEncrypt(data, aesKey, iv)
+	enc, err := CbcPkcs7paddingEncrypt(data, aesKey, iv)
 	if err != nil {
 		t.Error(err)
 	}
-	raw, err := AesCbcPkcs7paddingDecrypt(enc, aesKey, iv)
+	raw, err := CbcPkcs7paddingDecrypt(enc, aesKey, iv)
 	if err != nil {
 		t.Error(err)
 	}
