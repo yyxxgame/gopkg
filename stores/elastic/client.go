@@ -4,115 +4,124 @@ import (
 	"context"
 	"github.com/olivere/elastic/v7"
 	"github.com/yyxxgame/gopkg/xtrace"
-	"github.com/zeromicro/go-zero/core/logx"
 	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
 type (
-	Option func(c *client)
-	client struct {
-		username   string
-		password   string
-		enableAuth bool
-		enableGzip bool
-		*elastic.Client
-		tracer oteltrace.Tracer
-	}
-
-	EsSearchChain func(srv *elastic.SearchService) *elastic.SearchService
+	QueryChain  func(srv *elastic.SearchService) *elastic.SearchService
+	InsertChain func(srv *elastic.IndexService) *elastic.IndexService
 
 	IEsClient interface {
-		Query(chain EsSearchChain) *elastic.SearchResult
-		QueryCtx(ctx context.Context, chain EsSearchChain) *elastic.SearchResult
-		Insert(index string, data interface{})
-		InsertCtx(ctx context.Context, index string, data interface{})
+		Query(chain QueryChain) (*elastic.SearchResult, error)
+		QueryCtx(ctx context.Context, chain QueryChain) (*elastic.SearchResult, error)
+		doQuery(ctx context.Context, chain QueryChain) (*elastic.SearchResult, error)
+		Insert(chain InsertChain) (*elastic.IndexResponse, error)
+		InsertCtx(ctx context.Context, chain InsertChain) (*elastic.IndexResponse, error)
+		doInsert(ctx context.Context, chain InsertChain) (*elastic.IndexResponse, error)
+	}
+
+	Option func(c *esClient)
+
+	esClient struct {
+		username   string
+		password   string
+		enableGzip bool
+		tracer     oteltrace.Tracer
+
+		*elastic.Client
 	}
 )
 
 func MustNew(endpoints []string, opts ...Option) IEsClient {
-	impl := &client{}
+	c := &esClient{}
 	for _, opt := range opts {
-		opt(impl)
+		opt(c)
 	}
-	if cli, err := elastic.NewSimpleClient(
+	if client, err := elastic.NewSimpleClient(
 		elastic.SetURL(endpoints...),
-		elastic.SetGzip(impl.enableGzip),
-		elastic.SetBasicAuth(impl.username, impl.password),
+		elastic.SetGzip(c.enableGzip),
+		elastic.SetBasicAuth(c.username, c.password),
 	); err != nil {
-		logx.WithContext(context.Background()).Error(err.Error())
 		panic(err.Error())
 	} else {
-		impl.Client = cli
+		c.Client = client
 	}
-	return impl
+	return c
 }
 
 func WithAuth(username, password string) Option {
-	return func(c *client) {
-		c.enableAuth = true
+	return func(c *esClient) {
 		c.username = username
 		c.password = password
 	}
 }
 
 func WithGzip() Option {
-	return func(c *client) {
+	return func(c *esClient) {
 		c.enableGzip = true
 	}
 }
 
 func WithTracer(tracer oteltrace.Tracer) Option {
-	return func(c *client) {
+	return func(c *esClient) {
 		c.tracer = tracer
 	}
 }
 
-func (c *client) Query(chain EsSearchChain) *elastic.SearchResult {
+func (c *esClient) Query(chain QueryChain) (*elastic.SearchResult, error) {
 	return c.QueryCtx(context.Background(), chain)
 }
 
-func (c *client) QueryCtx(ctx context.Context, chain EsSearchChain) *elastic.SearchResult {
-	var result *elastic.SearchResult
+func (c *esClient) QueryCtx(ctx context.Context, chain QueryChain) (*elastic.SearchResult, error) {
 	if c.tracer != nil {
-		_ = xtrace.WithTraceHook(ctx, c.tracer, oteltrace.SpanKindInternal, "elastic.QueryCtx", func(ctx context.Context) error {
-			if ret, err := chain(c.Search()).Pretty(true).Do(ctx); err != nil {
-				logx.WithContext(ctx).Errorf("query data on error: %v", err)
+		var resp *elastic.SearchResult
+		err := xtrace.WithTraceHook(ctx, c.tracer, oteltrace.SpanKindInternal, "elastic.Query", func(ctx context.Context) error {
+			if ret, err := c.doQuery(ctx, chain); err != nil {
 				return err
 			} else {
-				result = ret
+				resp = ret
 			}
 			return nil
 		})
+		return resp, err
 	} else {
-		if ret, err := chain(c.Search()).Pretty(true).Do(ctx); err != nil {
-			logx.WithContext(ctx).Errorf("query data on error: %v", err)
-		} else {
-			result = ret
-		}
+		return c.doQuery(ctx, chain)
 	}
-	return result
 }
 
-func (c *client) Insert(index string, data interface{}) {
-	c.InsertCtx(context.Background(), index, data)
+func (c *esClient) doQuery(ctx context.Context, chain QueryChain) (*elastic.SearchResult, error) {
+	if resp, err := chain(c.Search()).Pretty(true).Do(ctx); err != nil {
+		return nil, err
+	} else {
+		return resp, err
+	}
 }
 
-func (c *client) InsertCtx(ctx context.Context, index string, data interface{}) {
+func (c *esClient) Insert(chain InsertChain) (*elastic.IndexResponse, error) {
+	return c.InsertCtx(context.Background(), chain)
+}
+
+func (c *esClient) InsertCtx(ctx context.Context, chain InsertChain) (*elastic.IndexResponse, error) {
 	if c.tracer != nil {
-		_ = xtrace.WithTraceHook(ctx, c.tracer, oteltrace.SpanKindInternal, "elastic.InsertCtx", func(ctx context.Context) error {
-			if result, err := c.Index().Index(index).Refresh("false").BodyJson(data).Do(ctx); err != nil {
-				logx.WithContext(ctx).Errorf("insert data on error: %v", err)
+		var resp *elastic.IndexResponse
+		err := xtrace.WithTraceHook(ctx, c.tracer, oteltrace.SpanKindInternal, "elastic.Insert", func(ctx context.Context) error {
+			if ret, err := c.doInsert(ctx, chain); err != nil {
 				return err
 			} else {
-				logx.WithContext(ctx).Infof("insert data on success: %+v", *result)
+				resp = ret
 			}
 			return nil
 		})
+		return resp, err
 	} else {
-		if result, err := c.Index().Index(index).Refresh("false").BodyJson(data).Do(ctx); err != nil {
-			logx.WithContext(ctx).Errorf("insert data on error: %v", err)
-		} else {
-			logx.WithContext(ctx).Infof("insert data on success: %+v", *result)
-		}
+		return c.doInsert(ctx, chain)
+	}
+}
+
+func (c *esClient) doInsert(ctx context.Context, chain InsertChain) (*elastic.IndexResponse, error) {
+	if resp, err := chain(c.Index()).Refresh("false").Do(ctx); err != nil {
+		return nil, err
+	} else {
+		return resp, err
 	}
 }
