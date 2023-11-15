@@ -27,14 +27,24 @@ func TestSaramaKafkaProducer(t *testing.T) {
 }
 
 func TestSaramaKafkaConsumer(t *testing.T) {
-	c := NewSaramaConsumer(brokers, topics, groupId)
-	c.LooperSync(func(ctx context.Context, message *sarama.ConsumerMessage) error {
-		t.Logf("handle message, key: %s, value: %s", message.Key, message.Value)
+	c0 := NewSaramaConsumer(brokers, topics, groupId)
+	c0.Looper(func(ctx context.Context, message *sarama.ConsumerMessage) error {
+		t.Logf("consumer0 handle message, key: %s, value: %s", message.Key, message.Value)
 		time.Sleep(2 * time.Second)
 		return nil
 	})
 
-	defer c.Release()
+	c1 := NewSaramaConsumer(brokers, topics, groupId)
+	c1.LooperSync(func(ctx context.Context, message *sarama.ConsumerMessage) error {
+		t.Logf("consumer1 handle message, key: %s, value: %s", message.Key, message.Value)
+		time.Sleep(2 * time.Second)
+		return nil
+	})
+
+	defer func() {
+		c0.Release()
+		c1.Release()
+	}()
 }
 
 func TestSaramaKafkaBroadcastConsumer(t *testing.T) {

@@ -3,7 +3,6 @@ package elastic
 import "testing"
 
 func TestNewEsClient(t *testing.T) {
-
 }
 
 func TestNewEsClientWithAuth(t *testing.T) {

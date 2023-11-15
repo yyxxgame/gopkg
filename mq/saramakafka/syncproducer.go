@@ -51,7 +51,7 @@ func NewSaramaSyncProducer(brokers []string, opts ...Option) IProducer {
 		config.Net.SASL.Enable = false
 	}
 
-	config.Version = sarama.V0_11_0_0
+	config.Version = sarama.V1_0_0_0
 
 	p.brokers = brokers
 
