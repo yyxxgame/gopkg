@@ -135,10 +135,10 @@ func (c *consumer) Release() {
 }
 
 func (c *consumer) Setup(session sarama.ConsumerGroupSession) error {
+	if !c.enableBroadcastModel {
+		return nil
+	}
 	c.resetOffsetOnce.Do(func() {
-		if !c.enableBroadcastModel {
-			return
-		}
 		for topic, partitions := range session.Claims() {
 			for _, partition := range partitions {
 				if offset, err := c.client.GetOffset(topic, partition, sarama.OffsetNewest); err != nil {
@@ -158,24 +158,38 @@ func (c *consumer) Cleanup(session sarama.ConsumerGroupSession) error {
 }
 
 func (c *consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
-	for msg := range claim.Messages() {
-		for _, topic := range c.topics {
-			if topic == msg.Topic {
-				traceId := GetTraceIdFromHeader(msg.Headers)
-				if c.tracer != nil && traceId != "" {
-					return xtrace.RunWithTraceHook(c.tracer, oteltrace.SpanKindConsumer, traceId, "saramakafka.ConsumeClaim", func(ctx context.Context) error {
-						return c.handleMessageCtx(ctx, session, msg)
-					},
-						attribute.String(mq.TraceMqTopic, msg.Topic),
-						attribute.String(mq.TraceMqKey, string(msg.Key)),
-						attribute.String(mq.TraceMqPayload, string(msg.Value)))
-				} else {
-					return c.handleMessage(session, msg)
+	// NOTE:
+	// Do not move the code below to a goroutine.
+	// The `ConsumeClaim` itself is called within a goroutine, see:
+	// https://github.com/IBM/sarama/blob/main/consumer_group.go#L27-L29
+	for {
+		select {
+		case message, ok := <-claim.Messages():
+			if !ok {
+				return nil
+			}
+			for _, topic := range c.topics {
+				if topic == message.Topic {
+					traceId := GetTraceIdFromHeader(message.Headers)
+					if c.tracer == nil || traceId == "" {
+						_ = c.handleMessage(session, message)
+					} else {
+						_ = xtrace.RunWithTraceHook(c.tracer, oteltrace.SpanKindConsumer, traceId, "saramakafka.ConsumeClaim.handleMessage", func(ctx context.Context) error {
+							return c.handleMessage(session, message)
+						},
+							attribute.String(mq.TraceMqTopic, message.Topic),
+							attribute.String(mq.TraceMqKey, string(message.Key)),
+							attribute.String(mq.TraceMqPayload, string(message.Value)))
+					}
 				}
 			}
+		case <-session.Context().Done():
+			// Should return when `session.Context()` is done.
+			// If not, will raise `ErrRebalanceInProgress` or `read tcp <ip>:<port>: i/o timeout` when kafka rebalance. see:
+			// https://github.com/IBM/sarama/issues/1192
+			return nil
 		}
 	}
-	return nil
 }
 
 func (c *consumer) handleMessage(session sarama.ConsumerGroupSession, msg *sarama.ConsumerMessage) error {
@@ -184,7 +198,7 @@ func (c *consumer) handleMessage(session sarama.ConsumerGroupSession, msg *saram
 
 func (c *consumer) handleMessageCtx(ctx context.Context, session sarama.ConsumerGroupSession, msg *sarama.ConsumerMessage) error {
 	if err := c.handler(ctx, msg); err != nil {
-		logx.WithContext(ctx).Errorf("saramakafka.ConsumeClaim.handleMessageCtx on error: %v", err)
+		logx.WithContext(ctx).Errorf("saramakafka.ConsumeClaim.handleMessage on error: %v", err)
 		return err
 	} else {
 		session.MarkMessage(msg, "")
