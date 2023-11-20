@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	gozerotrace "github.com/zeromicro/go-zero/core/trace"
 	"github.com/zeromicro/go-zero/rest"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -80,4 +81,11 @@ func TracingOnApiSvr(server *rest.Server) {
 			next(w, r)
 		}
 	})
+}
+
+func MakeHeaderContext(name string) context.Context {
+	ctx := context.Background()
+	tracer := otel.GetTracerProvider().Tracer(gozerotrace.TraceName)
+	_, span := tracer.Start(ctx, name, trace.WithSpanKind(trace.SpanKindInternal))
+	return trace.ContextWithSpan(ctx, span)
 }
