@@ -17,6 +17,7 @@ func TestMakeHeadContext(t *testing.T) {
 	// 设置全局的 TracerProvider
 	otel.SetTracerProvider(tp)
 
-	ctx := MakeHeaderContext("trace-test")
+	ctx, span := MakeHeaderContext("trace-test")
+	defer span.End()
 	t.Log(GetTraceId(ctx))
 }

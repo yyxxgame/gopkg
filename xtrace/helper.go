@@ -83,9 +83,7 @@ func TracingOnApiSvr(server *rest.Server) {
 	})
 }
 
-func MakeHeaderContext(name string) context.Context {
-	ctx := context.Background()
+func MakeHeaderContext(name string) (context.Context, trace.Span) {
 	tracer := otel.GetTracerProvider().Tracer(gozerotrace.TraceName)
-	_, span := tracer.Start(ctx, name, trace.WithSpanKind(trace.SpanKindInternal))
-	return trace.ContextWithSpan(ctx, span)
+	return tracer.Start(context.Background(), name, trace.WithSpanKind(trace.SpanKindInternal))
 }
