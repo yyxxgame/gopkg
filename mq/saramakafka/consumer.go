@@ -153,7 +153,7 @@ func (c *consumer) Setup(session sarama.ConsumerGroupSession) error {
 	return nil
 }
 
-func (c *consumer) Cleanup(session sarama.ConsumerGroupSession) error {
+func (c *consumer) Cleanup(_ sarama.ConsumerGroupSession) error {
 	return nil
 }
 
@@ -169,18 +169,21 @@ func (c *consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim saram
 				return nil
 			}
 			for _, topic := range c.topics {
-				if topic == message.Topic {
-					traceId := GetTraceIdFromHeader(message.Headers)
-					if c.tracer == nil || traceId == "" {
-						_ = c.handleMessage(session, message)
-					} else {
-						_ = xtrace.RunWithTraceHook(c.tracer, oteltrace.SpanKindConsumer, traceId, "saramakafka.ConsumeClaim.handleMessage", func(ctx context.Context) error {
-							return c.handleMessage(session, message)
-						},
-							attribute.String(mq.TraceMqTopic, message.Topic),
-							attribute.String(mq.TraceMqKey, string(message.Key)),
-							attribute.String(mq.TraceMqPayload, string(message.Value)))
-					}
+
+				if topic != message.Topic {
+					continue
+				}
+
+				traceId := GetTraceIdFromHeader(message.Headers)
+				if c.tracer == nil || traceId == "" {
+					_ = c.handleMessage(session, message)
+				} else {
+					_ = xtrace.RunWithTraceHook(c.tracer, oteltrace.SpanKindConsumer, traceId, "saramakafka.ConsumeClaim.handleMessage", func(ctx context.Context) error {
+						return c.handleMessage(session, message)
+					},
+						attribute.String(mq.TraceMqTopic, message.Topic),
+						attribute.String(mq.TraceMqKey, string(message.Key)),
+						attribute.String(mq.TraceMqPayload, string(message.Value)))
 				}
 			}
 		case <-session.Context().Done():
@@ -197,11 +200,20 @@ func (c *consumer) handleMessage(session sarama.ConsumerGroupSession, msg *saram
 }
 
 func (c *consumer) handleMessageCtx(ctx context.Context, session sarama.ConsumerGroupSession, msg *sarama.ConsumerMessage) error {
-	if err := c.handler(ctx, msg); err != nil {
+	err := c.handler(ctx, msg)
+
+	if err != nil {
 		logx.WithContext(ctx).Errorf("saramakafka.ConsumeClaim.handleMessage on error: %v", err)
 		return err
-	} else {
-		session.MarkMessage(msg, "")
 	}
+
+	session.MarkMessage(msg, "")
+
+	defer func() {
+		if c.metricHook != nil {
+			c.metricHook(ctx, msg.Topic)
+		}
+	}()
+
 	return nil
 }
