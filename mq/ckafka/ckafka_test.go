@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	brokers = []string{"localhost:9092"}
+	brokers = []string{"101.33.209.36:9092"}
 	topics  = []string{"test_ckafka"}
 	groupId = "test_group"
 )

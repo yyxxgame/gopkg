@@ -81,31 +81,40 @@ func (p *syncProducer) PublishCtx(ctx context.Context, topic, key string, bMsg [
 	message.Topic = topic
 	message.Value = sarama.StringEncoder(bMsg)
 
-	if p.tracer != nil && traceId != "" {
-		traceHeader := sarama.RecordHeader{
-			Key:   sarama.ByteEncoder(mq.TraceId),
-			Value: sarama.ByteEncoder(traceId),
-		}
-		message.Headers = []sarama.RecordHeader{traceHeader}
-		return xtrace.WithTraceHook(ctx, p.tracer, oteltrace.SpanKindProducer, "saramakafka.PublishCtx.SendMessage", func(ctx context.Context) error {
-			return p.publishMessage(message)
-		},
-			attribute.String(mq.TraceMqTopic, topic),
-			attribute.String(mq.TraceMqKey, key),
-			attribute.String(mq.TraceMqPayload, string(bMsg)))
-	} else {
-		return p.publishMessage(message)
+	if p.tracer == nil || traceId == "" {
+		return p.publishMessage(ctx, message)
 	}
+
+	traceHeader := sarama.RecordHeader{
+		Key:   sarama.ByteEncoder(mq.TraceId),
+		Value: sarama.ByteEncoder(traceId),
+	}
+	message.Headers = []sarama.RecordHeader{traceHeader}
+	return xtrace.WithTraceHook(ctx, p.tracer, oteltrace.SpanKindProducer, "saramakafka.PublishCtx.SendMessage", func(ctx context.Context) error {
+		return p.publishMessage(ctx, message)
+	},
+		attribute.String(mq.TraceMqTopic, topic),
+		attribute.String(mq.TraceMqKey, key),
+		attribute.String(mq.TraceMqPayload, string(bMsg)))
 }
 
-func (p *syncProducer) publishMessage(message *sarama.ProducerMessage) error {
-	if partition, offset, err := p.SendMessage(message); err != nil {
-		logx.Errorf("saramakafka.PublishCtx.SendMessage to topic: %s, on error: %v", message.Topic, err)
+func (p *syncProducer) publishMessage(ctx context.Context, message *sarama.ProducerMessage) error {
+	partition, offset, err := p.SendMessage(message)
+
+	if err != nil {
+		logx.WithContext(ctx).Errorf("saramakafka.PublishCtx.SendMessage to topic: %s, on error: %v", message.Topic, err)
 		return err
-	} else {
-		logx.Infof("saramakafka.PublishCtx.SendMessage to topic: %s, on success, partition: %d, offset: %v", message.Topic, partition, offset)
-		return nil
 	}
+
+	logx.WithContext(ctx).Infof("saramakafka.PublishCtx.SendMessage to topic: %s, on success, partition: %d, offset: %v", message.Topic, partition, offset)
+
+	defer func() {
+		if p.metricHook != nil {
+			p.metricHook(ctx, message.Topic)
+		}
+	}()
+
+	return nil
 }
 
 func (p *syncProducer) Release() {

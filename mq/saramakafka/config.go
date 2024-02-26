@@ -5,6 +5,7 @@
 package saramakafka
 
 import (
+	"context"
 	"github.com/IBM/sarama"
 	oteltrace "go.opentelemetry.io/otel/trace"
 )
@@ -14,9 +15,12 @@ type (
 		brokers     []string
 		username    string
 		password    string
-		tracer      oteltrace.Tracer
 		partitioner sarama.PartitionerConstructor
+		tracer      oteltrace.Tracer
+		metricHook  MetricHook
 	}
+
+	MetricHook func(ctx context.Context, topic string)
 
 	Option func(c *config)
 )
@@ -28,14 +32,20 @@ func WithSaslPlaintext(username, password string) Option {
 	}
 }
 
+func WithPartitioner(partitioner sarama.PartitionerConstructor) Option {
+	return func(c *config) {
+		c.partitioner = partitioner
+	}
+}
+
 func WithTracer(tracer oteltrace.Tracer) Option {
 	return func(c *config) {
 		c.tracer = tracer
 	}
 }
 
-func WithPartitioner(partitioner sarama.PartitionerConstructor) Option {
+func WithMetricHook(metricHook MetricHook) Option {
 	return func(c *config) {
-		c.partitioner = partitioner
+		c.metricHook = metricHook
 	}
 }
