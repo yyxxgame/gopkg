@@ -12,6 +12,7 @@ import (
 	"github.com/zeromicro/go-zero/core/logx"
 	"github.com/zeromicro/go-zero/core/service"
 	"github.com/zeromicro/go-zero/core/trace"
+	"testing"
 )
 
 type (
@@ -59,7 +60,7 @@ func Register(factory ITaskFactory) {
 	factory.Gen("test", NewTaskTemplate)
 }
 
-func Template() {
+func TestTask(t *testing.T) {
 	// defines
 	ctx := ServerCtx{}
 	group := service.NewServiceGroup()
