@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/zeromicro/go-zero/core/logx"
-	"runtime/debug"
 )
 
 type Exception interface {
@@ -53,8 +52,7 @@ func (sel *TryStruct) Finally(finally func()) {
 				catch(e)
 			}
 
-			errStack := debug.Stack()
-			logx.Infof("[Exception] err:%v, stack:%s", e, string(errStack))
+			logx.ErrorStack(e)
 		}
 		finally()
 	}()
