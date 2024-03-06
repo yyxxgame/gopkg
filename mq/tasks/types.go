@@ -4,29 +4,23 @@
 package core
 
 import (
-	"context"
 	"github.com/zeromicro/go-queue/kq"
 	"github.com/zeromicro/go-zero/core/trace"
 )
 
 type (
-	InstTask interface {
-		Run(ctx context.Context, k, v string) error
-		Stop()
-	}
-
 	BaseTask struct {
 		Topic string
-		InstTask
+		ITask
 	}
 
 	TaskFactory struct {
 		ITaskFactory
 		Slot  map[string]FuncCreateTask
-		Tasks map[string]InstTask
+		Tasks map[string]ITask
 	}
 
-	FuncCreateTask func(topic string, serverCtx ITaskServerCtx) InstTask
+	FuncCreateTask func(topic string, serverCtx ITaskServerCtx) ITask
 
 	FuncRegister func(factory ITaskFactory)
 

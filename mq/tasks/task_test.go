@@ -49,7 +49,7 @@ func (sel *TaskTemp) Run(ctx context.Context, k, v string) error {
 	return err
 }
 
-func NewTaskTemplate(topic string, serverCtx ITaskServerCtx) InstTask {
+func NewTaskTemplate(topic string, serverCtx ITaskServerCtx) ITask {
 	obj := &TaskTemp{}
 	obj.BaseTask.Topic = topic
 	// obj.ServerCtx = serverCtx.Object().(*svc.ServiceContext) // todo use in business code

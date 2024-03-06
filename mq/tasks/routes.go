@@ -24,7 +24,7 @@ func getFactory() ITaskFactory {
 	onceFactory.Do(func() {
 		instFactory = new(TaskFactory)
 		instFactory.Slot = map[string]FuncCreateTask{}
-		instFactory.Tasks = map[string]InstTask{}
+		instFactory.Tasks = map[string]ITask{}
 	})
 
 	return instFactory

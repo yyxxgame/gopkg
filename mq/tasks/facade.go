@@ -5,6 +5,7 @@
 package core
 
 import (
+	"context"
 	"github.com/zeromicro/go-queue/kq"
 	"github.com/zeromicro/go-zero/core/trace"
 )
@@ -20,5 +21,10 @@ type (
 
 	ITaskFactory interface {
 		Gen(key string, t FuncCreateTask)
+	}
+
+	ITask interface {
+		Run(ctx context.Context, k, v string) error
+		Stop()
 	}
 )
