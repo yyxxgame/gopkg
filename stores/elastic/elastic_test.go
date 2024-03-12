@@ -1,16 +1,16 @@
 package elastic
 
 import (
+	"github.com/golang/mock/gomock"
 	v7elastic "github.com/olivere/elastic/v7"
 	"github.com/stretchr/testify/assert"
-	"go.uber.org/mock/gomock"
 	"testing"
 )
 
 func TestQuery(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
-	mockClient := NewMockIEsClient(mockCtrl)
+	mockClient := newMockIEsClient(mockCtrl)
 
 	expectedResults := &v7elastic.SearchResult{
 		Hits: &v7elastic.SearchHits{
@@ -37,7 +37,7 @@ func TestQuery(t *testing.T) {
 func TestInsert(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
-	mockClient := NewMockIEsClient(mockCtrl)
+	mockClient := newMockIEsClient(mockCtrl)
 
 	expectedResults := &v7elastic.IndexResponse{
 		Index: "test-index",
@@ -56,7 +56,7 @@ func TestInsert(t *testing.T) {
 func TestUpsert(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
-	mockClient := NewMockIEsClient(mockCtrl)
+	mockClient := newMockIEsClient(mockCtrl)
 
 	expectedResults := &v7elastic.UpdateResponse{
 		Index: "test-index",
