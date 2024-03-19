@@ -2,7 +2,7 @@
 //@Time     : 2024/3/6
 //@Auther   : Kaishin
 
-package core
+package queue
 
 import (
 	"context"
@@ -50,15 +50,15 @@ func (sel *TaskTemp) Run(ctx context.Context, k, v string) error {
 	return err
 }
 
-func NewTaskTemplate(topic string, serverCtx ITaskServerCtx) ITask {
+func NewTaskTemplate(topic string, serverCtx IService) ITask {
 	obj := &TaskTemp{}
 	obj.BaseTask.Topic = topic
 	obj.serverCtx = serverCtx.Object().(*ServiceContext) // todo use in business code
 	return obj
 }
 
-func Register(factory ITaskFactory) {
-	factory.Gen("test", NewTaskTemplate)
+func Register(svr IService) {
+	svr.Gen("test", NewTaskTemplate)
 }
 
 func TestTask(t *testing.T) {
@@ -68,15 +68,13 @@ func TestTask(t *testing.T) {
 	defer group.Stop()
 
 	// register tasks
-	defer StopTasks()
-	RegisterTasks(
-		NewTaskServerCtx(
-			WithTaskRoute(ctx.TaskRoute),
-			WithKafkaConf(ctx.KafkaConf),
-			WithTelemetry(ctx.Telemetry),
-			WithFuncRegister(Register),
-			WithObject(ctx),
-		),
+	taskServer := NewService(
 		group,
+		WithTaskRoute(ctx.TaskRoute),
+		WithKafkaConf(ctx.KafkaConf),
+		WithTelemetry(ctx.Telemetry),
+		WithFuncRegister(Register),
+		WithObject(ctx),
 	)
+	defer taskServer.Stop()
 }

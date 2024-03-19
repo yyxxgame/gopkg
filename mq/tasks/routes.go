@@ -82,7 +82,7 @@ func StopTasks() {
 	for _, v := range instFactory.Tasks {
 		v.Stop()
 	}
-	logx.Info("Stop Tasks")
+	logx.Info("Stop tasks")
 }
 
 func NewTaskServerCtx(options ...OptionTaskServerCtx) ITaskServerCtx {
