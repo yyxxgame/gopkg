@@ -50,6 +50,10 @@ func (sel *TaskTemp) Run(ctx context.Context, k, v string) error {
 	return err
 }
 
+func (sel *TaskTemp) Stop() {
+	logx.Info("TaskTemplate Stop")
+}
+
 func NewTaskTemplate(topic string, serverCtx IService) ITask {
 	obj := &TaskTemp{}
 	obj.BaseTask.Topic = topic
@@ -63,7 +67,18 @@ func Register(svr IService) {
 
 func TestTask(t *testing.T) {
 	// defines
-	ctx := ServiceContext{}
+	ctx := &ServiceContext{
+		TaskRoute: map[string]string{"topic_name.group_name": "test"},
+		KafkaConf: []kq.KqConf{
+			{
+				Brokers:    []string{"127.0.0.1:9092"},
+				Group:      "group_name",
+				Topic:      "topic_name",
+				Processors: 1,
+				Consumers:  1,
+			},
+		},
+	}
 	group := service.NewServiceGroup()
 	defer group.Stop()
 

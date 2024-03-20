@@ -25,6 +25,10 @@ func (sel *Service) Gen(key string, t FuncTask) {
 	logx.Infof("[queue.Service.Gen] task:%s", key)
 }
 
+func (sel *Service) Object() interface{} {
+	return sel.obj
+}
+
 func (sel *Service) Stop() {
 	for _, v := range sel.tasks {
 		v.Stop()
