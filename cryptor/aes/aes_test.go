@@ -25,14 +25,13 @@ func TestAESCbcEncryptAndDecrypt(t *testing.T) {
 }
 
 func TestAESGcmEndcryptAndDecrypt(t *testing.T) {
-	aesKey := []byte(stringx.Randn(16))
+	key := []byte(stringx.Randn(16))
 	data := []byte(stringx.Randn(200))
-	nonce := GenerateNonce()
 
-	enc, err := GcmEncrypt(data, aesKey, nonce)
+	enc, err := GcmEncrypt(data, key)
 	assert.Nil(t, err)
 
-	raw, err := GcmDecrypt(enc, aesKey, nonce)
+	raw, err := GcmDecrypt(enc, key)
 	assert.Nil(t, err)
 
 	assert.Equal(t, raw, data)
