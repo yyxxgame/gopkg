@@ -9,7 +9,6 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
-	"errors"
 	"io"
 )
 
@@ -32,12 +31,6 @@ func GenerateIV(key []byte) []byte {
 		iv[i] = key[length-1-i]
 	}
 	return iv
-}
-
-func GenerateNonce() []byte {
-	nonce := make([]byte, 12)
-	_, _ = io.ReadFull(rand.Reader, nonce)
-	return nonce
 }
 
 // CbcPkcs7paddingEncrypt AES/CBC/PKCS7Padding加密
@@ -68,10 +61,7 @@ func CbcPkcs7paddingDecrypt(data, key, iv []byte) ([]byte, error) {
 }
 
 // GcmEncrypt AES/GCM 加密
-func GcmEncrypt(data, key, nonce []byte) ([]byte, error) {
-	if len(nonce) != 12 {
-		return nil, errors.New("nonce size must is 12")
-	}
+func GcmEncrypt(raw, key []byte) ([]byte, error) {
 	if block, err := aes.NewCipher(key); err != nil {
 		return nil, err
 	} else {
@@ -80,12 +70,15 @@ func GcmEncrypt(data, key, nonce []byte) ([]byte, error) {
 			return nil, err
 		}
 
-		return aesGcm.Seal(nil, nonce, data, nil), nil
+		nonce := make([]byte, aesGcm.NonceSize())
+		_, _ = io.ReadFull(rand.Reader, nonce)
+
+		return aesGcm.Seal(nonce, nonce, raw, nil), nil
 	}
 }
 
 // GcmDecrypt AES/GCM 解密
-func GcmDecrypt(data, key, nonce []byte) ([]byte, error) {
+func GcmDecrypt(enc, key []byte) ([]byte, error) {
 	if block, err := aes.NewCipher(key); err != nil {
 		return nil, err
 	} else {
@@ -94,6 +87,11 @@ func GcmDecrypt(data, key, nonce []byte) ([]byte, error) {
 			return nil, err
 		}
 
-		return aesGcm.Open(nil, nonce, data, nil)
+		nonceSize := aesGcm.NonceSize()
+
+		// 分离nonce和密文
+		nonce, ciphertext := enc[:nonceSize], enc[nonceSize:]
+
+		return aesGcm.Open(nil, nonce, ciphertext, nil)
 	}
 }
