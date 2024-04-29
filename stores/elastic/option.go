@@ -26,3 +26,15 @@ func WithTracer(tracer oteltrace.Tracer) Option {
 		c.tracer = tracer
 	}
 }
+
+func WithHealthCheck() Option {
+	return func(c *esClient) {
+		c.enableHealthCheck = true
+	}
+}
+
+func WithSniffer() Option {
+	return func(c *esClient) {
+		c.enableSniffer = true
+	}
+}
