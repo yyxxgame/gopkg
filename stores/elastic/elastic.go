@@ -36,7 +36,7 @@ func MustNew(endpoints []string, opts ...Option) IEsClient {
 	for _, opt := range opts {
 		opt(c)
 	}
-	if client, err := v7elastic.NewSimpleClient(
+	if client, err := v7elastic.NewClient(
 		v7elastic.SetURL(endpoints...),
 		v7elastic.SetGzip(c.enableGzip),
 		v7elastic.SetBasicAuth(c.username, c.password),
