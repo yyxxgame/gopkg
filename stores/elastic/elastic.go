@@ -22,10 +22,12 @@ type (
 	}
 
 	esClient struct {
-		username   string
-		password   string
-		enableGzip bool
-		tracer     oteltrace.Tracer
+		username          string
+		password          string
+		enableGzip        bool
+		enableHealthCheck bool
+		enableSniffer     bool
+		tracer            oteltrace.Tracer
 
 		*v7elastic.Client
 	}
@@ -40,6 +42,8 @@ func MustNew(endpoints []string, opts ...Option) IEsClient {
 		v7elastic.SetURL(endpoints...),
 		v7elastic.SetGzip(c.enableGzip),
 		v7elastic.SetBasicAuth(c.username, c.password),
+		v7elastic.SetHealthcheck(c.enableHealthCheck),
+		v7elastic.SetSniff(c.enableSniffer),
 	); err != nil {
 		panic(err.Error())
 	} else {
