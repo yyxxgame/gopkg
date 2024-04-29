@@ -15,9 +15,9 @@ func WithAuth(username, password string) Option {
 	}
 }
 
-func WithGzip() Option {
+func WithGzip(enable bool) Option {
 	return func(c *esClient) {
-		c.enableGzip = true
+		c.enableGzip = enable
 	}
 }
 
@@ -27,14 +27,14 @@ func WithTracer(tracer oteltrace.Tracer) Option {
 	}
 }
 
-func WithHealthCheck() Option {
+func WithHealthCheck(enable bool) Option {
 	return func(c *esClient) {
-		c.enableHealthCheck = true
+		c.enableHealthCheck = enable
 	}
 }
 
-func WithSniffer() Option {
+func WithSniffer(enable bool) Option {
 	return func(c *esClient) {
-		c.enableSniffer = true
+		c.enableSniffer = enable
 	}
 }
