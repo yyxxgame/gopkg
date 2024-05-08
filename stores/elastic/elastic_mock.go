@@ -5,121 +5,152 @@
 package elastic
 
 import (
-	"context"
+	context "context"
+	reflect "reflect"
+
 	gomock "github.com/golang/mock/gomock"
-	v7elastic "github.com/olivere/elastic/v7"
-	"reflect"
+	v7 "github.com/olivere/elastic/v7"
 )
 
-// mockIEsClient is a mock of IEsClient interface.
-type mockIEsClient struct {
+// MockIEsClient is a mock of IEsClient interface.
+type MockIEsClient struct {
 	ctrl     *gomock.Controller
-	recorder *mockIEsClientMockRecorder
+	recorder *MockIEsClientMockRecorder
 }
 
-// mockIEsClientMockRecorder is the mock recorder for mockIEsClient.
-type mockIEsClientMockRecorder struct {
-	mock *mockIEsClient
+// MockIEsClientMockRecorder is the mock recorder for MockIEsClient.
+type MockIEsClientMockRecorder struct {
+	mock *MockIEsClient
 }
 
-// newMockIEsClient creates a new mock instance.
-func newMockIEsClient(ctrl *gomock.Controller) *mockIEsClient {
-	mock := &mockIEsClient{ctrl: ctrl}
-	mock.recorder = &mockIEsClientMockRecorder{mock}
+// NewMockIEsClient creates a new mock instance.
+func newMockIEsClient(ctrl *gomock.Controller) *MockIEsClient {
+	mock := &MockIEsClient{ctrl: ctrl}
+	mock.recorder = &MockIEsClientMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *mockIEsClient) EXPECT() *mockIEsClientMockRecorder {
+func (m *MockIEsClient) EXPECT() *MockIEsClientMockRecorder {
 	return m.recorder
 }
 
+// Analyze mocks base method.
+func (m *MockIEsClient) Analyze(chain AnalyzeChain) (*v7.IndicesAnalyzeResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Analyze", chain)
+	ret0, _ := ret[0].(*v7.IndicesAnalyzeResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Analyze indicates an expected call of Analyze.
+func (mr *MockIEsClientMockRecorder) Analyze(chain interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Analyze", reflect.TypeOf((*MockIEsClient)(nil).Analyze), chain)
+}
+
+// AnalyzeCtx mocks base method.
+func (m *MockIEsClient) AnalyzeCtx(ctx context.Context, chain AnalyzeChain) (*v7.IndicesAnalyzeResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AnalyzeCtx", ctx, chain)
+	ret0, _ := ret[0].(*v7.IndicesAnalyzeResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// AnalyzeCtx indicates an expected call of AnalyzeCtx.
+func (mr *MockIEsClientMockRecorder) AnalyzeCtx(ctx, chain interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AnalyzeCtx", reflect.TypeOf((*MockIEsClient)(nil).AnalyzeCtx), ctx, chain)
+}
+
 // Insert mocks base method.
-func (m *mockIEsClient) Insert(chain InsertChain) (*v7elastic.IndexResponse, error) {
+func (m *MockIEsClient) Insert(chain InsertChain) (*v7.IndexResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Insert", chain)
-	ret0, _ := ret[0].(*v7elastic.IndexResponse)
+	ret0, _ := ret[0].(*v7.IndexResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Insert indicates an expected call of Insert.
-func (mr *mockIEsClientMockRecorder) Insert(chain interface{}) *gomock.Call {
+func (mr *MockIEsClientMockRecorder) Insert(chain interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Insert", reflect.TypeOf((*mockIEsClient)(nil).Insert), chain)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Insert", reflect.TypeOf((*MockIEsClient)(nil).Insert), chain)
 }
 
 // InsertCtx mocks base method.
-func (m *mockIEsClient) InsertCtx(ctx context.Context, chain InsertChain) (*v7elastic.IndexResponse, error) {
+func (m *MockIEsClient) InsertCtx(ctx context.Context, chain InsertChain) (*v7.IndexResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "InsertCtx", ctx, chain)
-	ret0, _ := ret[0].(*v7elastic.IndexResponse)
+	ret0, _ := ret[0].(*v7.IndexResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // InsertCtx indicates an expected call of InsertCtx.
-func (mr *mockIEsClientMockRecorder) InsertCtx(ctx, chain interface{}) *gomock.Call {
+func (mr *MockIEsClientMockRecorder) InsertCtx(ctx, chain interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertCtx", reflect.TypeOf((*mockIEsClient)(nil).InsertCtx), ctx, chain)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertCtx", reflect.TypeOf((*MockIEsClient)(nil).InsertCtx), ctx, chain)
 }
 
 // Query mocks base method.
-func (m *mockIEsClient) Query(chain QueryChain) (*v7elastic.SearchResult, error) {
+func (m *MockIEsClient) Query(chain QueryChain) (*v7.SearchResult, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Query", chain)
-	ret0, _ := ret[0].(*v7elastic.SearchResult)
+	ret0, _ := ret[0].(*v7.SearchResult)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Query indicates an expected call of Query.
-func (mr *mockIEsClientMockRecorder) Query(chain interface{}) *gomock.Call {
+func (mr *MockIEsClientMockRecorder) Query(chain interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Query", reflect.TypeOf((*mockIEsClient)(nil).Query), chain)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Query", reflect.TypeOf((*MockIEsClient)(nil).Query), chain)
 }
 
 // QueryCtx mocks base method.
-func (m *mockIEsClient) QueryCtx(ctx context.Context, chain QueryChain) (*v7elastic.SearchResult, error) {
+func (m *MockIEsClient) QueryCtx(ctx context.Context, chain QueryChain) (*v7.SearchResult, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "QueryCtx", ctx, chain)
-	ret0, _ := ret[0].(*v7elastic.SearchResult)
+	ret0, _ := ret[0].(*v7.SearchResult)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // QueryCtx indicates an expected call of QueryCtx.
-func (mr *mockIEsClientMockRecorder) QueryCtx(ctx, chain interface{}) *gomock.Call {
+func (mr *MockIEsClientMockRecorder) QueryCtx(ctx, chain interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryCtx", reflect.TypeOf((*mockIEsClient)(nil).QueryCtx), ctx, chain)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryCtx", reflect.TypeOf((*MockIEsClient)(nil).QueryCtx), ctx, chain)
 }
 
 // Upsert mocks base method.
-func (m *mockIEsClient) Upsert(chain UpsertChain) (*v7elastic.UpdateResponse, error) {
+func (m *MockIEsClient) Upsert(chain UpsertChain) (*v7.UpdateResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Upsert", chain)
-	ret0, _ := ret[0].(*v7elastic.UpdateResponse)
+	ret0, _ := ret[0].(*v7.UpdateResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Upsert indicates an expected call of Upsert.
-func (mr *mockIEsClientMockRecorder) Upsert(chain interface{}) *gomock.Call {
+func (mr *MockIEsClientMockRecorder) Upsert(chain interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Upsert", reflect.TypeOf((*mockIEsClient)(nil).Upsert), chain)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Upsert", reflect.TypeOf((*MockIEsClient)(nil).Upsert), chain)
 }
 
 // UpsertCtx mocks base method.
-func (m *mockIEsClient) UpsertCtx(ctx context.Context, chain UpsertChain) (*v7elastic.UpdateResponse, error) {
+func (m *MockIEsClient) UpsertCtx(ctx context.Context, chain UpsertChain) (*v7.UpdateResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpsertCtx", ctx, chain)
-	ret0, _ := ret[0].(*v7elastic.UpdateResponse)
+	ret0, _ := ret[0].(*v7.UpdateResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // UpsertCtx indicates an expected call of UpsertCtx.
-func (mr *mockIEsClientMockRecorder) UpsertCtx(ctx, chain interface{}) *gomock.Call {
+func (mr *MockIEsClientMockRecorder) UpsertCtx(ctx, chain interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpsertCtx", reflect.TypeOf((*mockIEsClient)(nil).UpsertCtx), ctx, chain)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpsertCtx", reflect.TypeOf((*MockIEsClient)(nil).UpsertCtx), ctx, chain)
 }

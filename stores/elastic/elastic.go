@@ -8,9 +8,10 @@ import (
 )
 
 type (
-	QueryChain  func(srv *v7elastic.SearchService) *v7elastic.SearchService
-	InsertChain func(srv *v7elastic.IndexService) *v7elastic.IndexService
-	UpsertChain func(srv *v7elastic.UpdateService) *v7elastic.UpdateService
+	QueryChain   func(srv *v7elastic.SearchService) *v7elastic.SearchService
+	InsertChain  func(srv *v7elastic.IndexService) *v7elastic.IndexService
+	UpsertChain  func(srv *v7elastic.UpdateService) *v7elastic.UpdateService
+	AnalyzeChain func(srv *v7elastic.IndicesAnalyzeService) *v7elastic.IndicesAnalyzeService
 
 	IEsClient interface {
 		Query(chain QueryChain) (*v7elastic.SearchResult, error)
@@ -19,6 +20,8 @@ type (
 		InsertCtx(ctx context.Context, chain InsertChain) (*v7elastic.IndexResponse, error)
 		Upsert(chain UpsertChain) (*v7elastic.UpdateResponse, error)
 		UpsertCtx(ctx context.Context, chain UpsertChain) (*v7elastic.UpdateResponse, error)
+		Analyze(chain AnalyzeChain) (*v7elastic.IndicesAnalyzeResponse, error)
+		AnalyzeCtx(ctx context.Context, chain AnalyzeChain) (*v7elastic.IndicesAnalyzeResponse, error)
 	}
 
 	esClient struct {
@@ -62,7 +65,7 @@ func (c *esClient) QueryCtx(ctx context.Context, chain QueryChain) (*v7elastic.S
 	}
 
 	var resp *v7elastic.SearchResult
-	err := xtrace.WithTraceHook(ctx, c.tracer, oteltrace.SpanKindInternal, "v7elastic.Query", func(ctx context.Context) error {
+	err := xtrace.WithTraceHook(ctx, c.tracer, oteltrace.SpanKindClient, "v7elastic.Query", func(ctx context.Context) error {
 		if ret, err := chain(v7elastic.NewSearchService(c.Client)).Pretty(true).Do(ctx); err != nil {
 			return err
 		} else {
@@ -83,7 +86,7 @@ func (c *esClient) InsertCtx(ctx context.Context, chain InsertChain) (*v7elastic
 	}
 
 	var resp *v7elastic.IndexResponse
-	err := xtrace.WithTraceHook(ctx, c.tracer, oteltrace.SpanKindInternal, "v7elastic.Insert", func(ctx context.Context) error {
+	err := xtrace.WithTraceHook(ctx, c.tracer, oteltrace.SpanKindClient, "v7elastic.Insert", func(ctx context.Context) error {
 		if ret, err := chain(v7elastic.NewIndexService(c.Client)).Pretty(true).Refresh("true").Do(ctx); err != nil {
 			return err
 		} else {
@@ -104,8 +107,29 @@ func (c *esClient) UpsertCtx(ctx context.Context, chain UpsertChain) (*v7elastic
 	}
 
 	var resp *v7elastic.UpdateResponse
-	err := xtrace.WithTraceHook(ctx, c.tracer, oteltrace.SpanKindInternal, "v7elastic.Insert", func(ctx context.Context) error {
+	err := xtrace.WithTraceHook(ctx, c.tracer, oteltrace.SpanKindClient, "v7elastic.Insert", func(ctx context.Context) error {
 		if ret, err := chain(v7elastic.NewUpdateService(c.Client)).DocAsUpsert(true).Pretty(true).Refresh("true").Do(ctx); err != nil {
+			return err
+		} else {
+			resp = ret
+		}
+		return nil
+	})
+	return resp, err
+}
+
+func (c *esClient) Analyze(chain AnalyzeChain) (*v7elastic.IndicesAnalyzeResponse, error) {
+	return c.AnalyzeCtx(context.Background(), chain)
+}
+
+func (c *esClient) AnalyzeCtx(ctx context.Context, chain AnalyzeChain) (*v7elastic.IndicesAnalyzeResponse, error) {
+	if c.tracer == nil {
+		return chain(v7elastic.NewIndicesAnalyzeService(c.Client)).Pretty(true).Do(ctx)
+	}
+
+	var resp *v7elastic.IndicesAnalyzeResponse
+	err := xtrace.WithTraceHook(ctx, c.tracer, oteltrace.SpanKindClient, "v7elastic.Analyze", func(ctx context.Context) error {
+		if ret, err := chain(v7elastic.NewIndicesAnalyzeService(c.Client)).Pretty(true).Do(ctx); err != nil {
 			return err
 		} else {
 			resp = ret

@@ -71,3 +71,20 @@ func TestUpsert(t *testing.T) {
 
 	assert.Equal(t, expectedResults.Index, result.Index)
 }
+
+func TestAnalyze(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	mockClient := newMockIEsClient(mockCtrl)
+
+	expectedResults := &v7elastic.IndicesAnalyzeResponse{}
+
+	mockClient.EXPECT().Analyze(gomock.Any()).Return(expectedResults, nil)
+
+	result, err := mockClient.Analyze(func(srv *v7elastic.IndicesAnalyzeService) *v7elastic.IndicesAnalyzeService {
+		return srv
+	})
+	assert.Nil(t, err)
+
+	assert.Equal(t, expectedResults, result)
+}
