@@ -1,24 +1,19 @@
 package prompusher
 
 import (
-	"bufio"
-	"context"
-	"fmt"
-	"net/http"
 	"regexp"
 	"time"
+
+	gozerostat "github.com/zeromicro/go-zero/core/stat"
 
 	prom "github.com/prometheus/client_golang/prometheus"
 	prompush "github.com/prometheus/client_golang/prometheus/push"
 	"github.com/yyxxgame/gopkg/syncx/gopool"
-	"github.com/zeromicro/go-zero/core/fx"
 	"github.com/zeromicro/go-zero/core/logx"
 	gozerometric "github.com/zeromicro/go-zero/core/metric"
-	gozerostat "github.com/zeromicro/go-zero/core/stat"
 	"github.com/zeromicro/go-zero/core/syncx"
 	"github.com/zeromicro/go-zero/core/sysx"
 	"github.com/zeromicro/go-zero/core/timex"
-	"github.com/zeromicro/go-zero/rest/httpc"
 )
 
 var (
@@ -51,7 +46,6 @@ type (
 		ticker                       timex.Ticker
 		done                         *syncx.DoneChan
 		instanceName                 string
-		enableRemoveOldMetrics       bool
 		enableCollectCpuUsageMetrics bool
 	}
 
@@ -73,7 +67,6 @@ func MustNewPromMetricsPusher(c PromPushConf, opts ...Option) IPromMetricsPusher
 		ticker:                       timex.NewTicker(time.Duration(c.Interval) * time.Second),
 		done:                         syncx.NewDoneChan(),
 		instanceName:                 sysx.Hostname(),
-		enableRemoveOldMetrics:       true,
 		enableCollectCpuUsageMetrics: true,
 	}
 
@@ -86,46 +79,7 @@ func MustNewPromMetricsPusher(c PromPushConf, opts ...Option) IPromMetricsPusher
 		Grouping("project", c.ProjectName).
 		Grouping("instance", p.instanceName)
 
-	if p.enableRemoveOldMetrics {
-		p.removeOldMetrics(c.Url)
-	}
-
 	return p
-}
-
-func (p *pusher) removeOldMetrics(url string) {
-	gopool.Go(func() {
-		resp, _ := httpc.Do(context.Background(), http.MethodGet, url, nil)
-		defer resp.Body.Close()
-
-		scanner := bufio.NewScanner(resp.Body)
-
-		fx.From(func(source chan<- any) {
-			for scanner.Scan() {
-				line := scanner.Text()
-				matches := matcher.FindStringSubmatch(line)
-				if len(matches) < 1 {
-					continue
-				}
-
-				instance, job, project := matches[1], matches[2], matches[3]
-				source <- &pusherInfoPair{
-					jobName:      job,
-					projectName:  project,
-					instanceName: instance,
-				}
-			}
-		}).Parallel(func(item any) {
-			pair := item.(*pusherInfoPair)
-			req, _ := http.NewRequestWithContext(
-				context.Background(),
-				http.MethodDelete,
-				fmt.Sprintf("%s/job/%s/instance/%s/project/%s", url, pair.jobName, pair.instanceName, pair.projectName),
-				nil,
-			)
-			_, _ = httpc.DoRequest(req)
-		})
-	})
 }
 
 func (p *pusher) Start() {
@@ -134,7 +88,9 @@ func (p *pusher) Start() {
 			select {
 			case <-p.ticker.Chan():
 				// added CPU usage usage metrics
-				metricCpuUsage.Set(float64(gozerostat.CpuUsage()))
+				if p.enableCollectCpuUsageMetrics {
+					metricCpuUsage.Set(float64(gozerostat.CpuUsage()))
+				}
 
 				if err := p.Push(); err != nil {
 					logx.Errorf("[PROM-PUSHER]: push metrics to pushgateway on error: %v", err)
@@ -149,19 +105,13 @@ func (p *pusher) Start() {
 
 func (p *pusher) Stop() {
 	p.done.Close()
+	_ = p.Delete()
 }
 
 // WithInstanceName set pusher instance name.
 func WithInstanceName(instanceName string) Option {
 	return func(p *pusher) {
 		p.instanceName = instanceName
-	}
-}
-
-// WithRemoveOldMetrics remove old metrics in pushgateway when startup.
-func WithRemoveOldMetrics(enable bool) Option {
-	return func(p *pusher) {
-		p.enableRemoveOldMetrics = enable
 	}
 }
 
