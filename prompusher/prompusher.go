@@ -29,6 +29,7 @@ type (
 		InstanceName string `json:",optional"` // nolint
 		Interval     int    `json:",optional"` // nolint
 	}
+
 	IPromMetricsPusher interface {
 		Start()
 		Stop()
@@ -38,10 +39,14 @@ type (
 		*prompush.Pusher
 		ticker timex.Ticker
 		done   *syncx.DoneChan
+
+		enableRemoveOldMetrics bool
 	}
+
+	Option func(p *pusher)
 )
 
-func MustNewPromMetricsPusher(c PromPushConf) IPromMetricsPusher {
+func MustNewPromMetricsPusher(c PromPushConf, opts ...Option) IPromMetricsPusher {
 	if c.Url == "" || c.JobName == "" {
 		return nil
 	}
@@ -58,6 +63,14 @@ func MustNewPromMetricsPusher(c PromPushConf) IPromMetricsPusher {
 
 	if c.InstanceName != "" {
 		p.Grouping("instance", c.InstanceName)
+	}
+
+	for _, opt := range opts {
+		opt(p)
+	}
+
+	if p.enableRemoveOldMetrics {
+		_ = p.Delete()
 	}
 
 	return p
@@ -84,4 +97,11 @@ func (p *pusher) Start() {
 
 func (p *pusher) Stop() {
 	p.done.Close()
+}
+
+// WithRemoveOldMetrics remove old metrics in pushgateway when startup.
+func WithRemoveOldMetrics(enable bool) Option {
+	return func(p *pusher) {
+		p.enableRemoveOldMetrics = enable
+	}
 }
