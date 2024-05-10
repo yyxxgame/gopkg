@@ -4,13 +4,12 @@ import (
 	"regexp"
 	"time"
 
-	gozerostat "github.com/zeromicro/go-zero/core/stat"
-
 	prom "github.com/prometheus/client_golang/prometheus"
 	prompush "github.com/prometheus/client_golang/prometheus/push"
 	"github.com/yyxxgame/gopkg/syncx/gopool"
 	"github.com/zeromicro/go-zero/core/logx"
 	gozerometric "github.com/zeromicro/go-zero/core/metric"
+	gozerostat "github.com/zeromicro/go-zero/core/stat"
 	"github.com/zeromicro/go-zero/core/syncx"
 	"github.com/zeromicro/go-zero/core/sysx"
 	"github.com/zeromicro/go-zero/core/timex"
