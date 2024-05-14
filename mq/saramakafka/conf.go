@@ -19,9 +19,6 @@ type (
 		tracer               oteltrace.Tracer
 	}
 
-	ProducerInterceptor func(message *sarama.ProducerMessage)
-	ConsumerInterceptor func(message *sarama.ConsumerMessage)
-
 	Option func(c *OptionConf)
 )
 

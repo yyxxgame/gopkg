@@ -50,7 +50,6 @@ func NewSaramaKafkaConsumer(brokers, topics []string, groupId string, opts ...Op
 	config.Consumer.Return.Errors = true
 	config.Consumer.Offsets.Retry.Max = 99
 	config.Consumer.Offsets.AutoCommit.Enable = true
-	config.Consumer.Interceptors = append(config.Consumer.Interceptors, c)
 
 	consumerGroup, err := sarama.NewConsumerGroup(brokers, groupId, config)
 	if err != nil {
@@ -104,7 +103,7 @@ func (c *consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim saram
 					continue
 				}
 
-				traceId := GetHeaderValue(mq.HeaderTraceId, message.Headers)
+				traceId := c.getHeaderValue(mq.HeaderTraceId, message.Headers)
 				if c.tracer == nil || traceId == "" {
 					_ = c.handleMessage(context.Background(), session, message)
 				} else {
@@ -125,19 +124,37 @@ func (c *consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim saram
 	}
 }
 
-func (c *consumer) handleMessage(ctx context.Context, session sarama.ConsumerGroupSession, msg *sarama.ConsumerMessage) error {
-	err := c.handler(ctx, msg)
+func (c *consumer) handleMessage(ctx context.Context, session sarama.ConsumerGroupSession, message *sarama.ConsumerMessage) error {
+	c.beforeProduceMessage(message)
+	err := c.handler(ctx, message)
+	c.afterProduceMessage(message, err)
+
 	if err != nil {
 		logx.WithContext(ctx).Errorf("[SARAMA-KAFKA-ERROR]: ConsumeClaim.handleMessage on error: %v", err)
 		return err
 	}
 
-	session.MarkMessage(msg, "")
+	session.MarkMessage(message, "")
 	return nil
 }
 
-func (c *consumer) OnConsume(message *sarama.ConsumerMessage) {
+func (c *consumer) beforeProduceMessage(message *sarama.ConsumerMessage) {
 	for _, interceptor := range c.consumerInterceptors {
-		interceptor(message)
+		interceptor.BeforeConsume(message)
 	}
+}
+
+func (c *consumer) afterProduceMessage(message *sarama.ConsumerMessage, err error) {
+	for _, interceptor := range c.consumerInterceptors {
+		interceptor.AfterConsume(message, err)
+	}
+}
+
+func (c *consumer) getHeaderValue(header mq.Header, headers []*sarama.RecordHeader) string {
+	for _, item := range headers {
+		if string(item.Key) == header.String() {
+			return string(item.Value)
+		}
+	}
+	return ""
 }
