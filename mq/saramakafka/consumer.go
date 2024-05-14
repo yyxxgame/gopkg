@@ -32,7 +32,7 @@ type (
 	ConsumerHandler func(ctx context.Context, message *sarama.ConsumerMessage) error
 )
 
-func NewSaramaConsumer(brokers, topics []string, groupId string, opts ...Option) IConsumer {
+func NewSaramaKafkaConsumer(brokers, topics []string, groupId string, opts ...Option) IConsumer {
 	c := &consumer{
 		OptionConf: &OptionConf{
 			consumerInterceptors: []ConsumerInterceptor{},
@@ -54,7 +54,7 @@ func NewSaramaConsumer(brokers, topics []string, groupId string, opts ...Option)
 
 	consumerGroup, err := sarama.NewConsumerGroup(brokers, groupId, config)
 	if err != nil {
-		logx.Errorf("[SARAMA-KAFKA-ERROR]: NewSaramaConsumer on error: %v", err)
+		logx.Errorf("[SARAMA-KAFKA-ERROR]: NewSaramaKafkaConsumer on error: %v", err)
 		panic(err)
 	}
 
