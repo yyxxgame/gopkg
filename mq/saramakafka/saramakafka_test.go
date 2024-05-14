@@ -35,7 +35,7 @@ func TestSaramaKafkaProducer(t *testing.T) {
 
 func TestSaramaKafkaConsumer(t *testing.T) {
 	done := syncx.NewDoneChan()
-	c0 := NewSaramaConsumer(brokers, topics, groupId, WithConsumerInterceptor(func(message *sarama.ConsumerMessage) {
+	c0 := NewSaramaKafkaConsumer(brokers, topics, groupId, WithConsumerInterceptor(func(message *sarama.ConsumerMessage) {
 		logx.Infof("OnConsume Interceptor...")
 		logx.Infof("message: %+v", *message)
 	}))
