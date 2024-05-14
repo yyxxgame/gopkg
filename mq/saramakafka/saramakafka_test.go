@@ -6,20 +6,27 @@ package saramakafka
 
 import (
 	"context"
-	"github.com/IBM/sarama"
-	"github.com/zeromicro/go-zero/core/stringx"
 	"testing"
 	"time"
+
+	"github.com/IBM/sarama"
+	"github.com/zeromicro/go-zero/core/logx"
+	"github.com/zeromicro/go-zero/core/proc"
+	"github.com/zeromicro/go-zero/core/stringx"
+	"github.com/zeromicro/go-zero/core/syncx"
 )
 
 var (
-	brokers = []string{"localhost:9092"}
-	topics  = []string{"test_sarama_kafka"}
+	brokers = []string{"101.33.209.36:9092"}
+	topics  = []string{"testsdk"}
 	groupId = "gopkg_test_group"
 )
 
 func TestSaramaKafkaProducer(t *testing.T) {
-	p := NewSaramaSyncProducer(brokers)
+	p := NewSaramaKafkaProducer(brokers, WithProducerInterceptor(func(message *sarama.ProducerMessage) {
+		logx.Infof("OnSend Interceptor...")
+		logx.Infof("message: %+v", *message)
+	}))
 	p.Publish(topics[0], "test_message", []byte(stringx.Randn(16)))
 	p.Publish(topics[0], "test_message", []byte(stringx.Randn(16)))
 	p.Publish(topics[0], "test_message", []byte(stringx.Randn(16)))
@@ -27,33 +34,20 @@ func TestSaramaKafkaProducer(t *testing.T) {
 }
 
 func TestSaramaKafkaConsumer(t *testing.T) {
-	c0 := NewSaramaConsumer(brokers, topics, groupId)
+	done := syncx.NewDoneChan()
+	c0 := NewSaramaConsumer(brokers, topics, groupId, WithConsumerInterceptor(func(message *sarama.ConsumerMessage) {
+		logx.Infof("OnConsume Interceptor...")
+		logx.Infof("message: %+v", *message)
+	}))
 	c0.Looper(func(ctx context.Context, message *sarama.ConsumerMessage) error {
-		t.Logf("consumer0 handle message, key: %s, value: %s", message.Key, message.Value)
+		t.Logf("consumer0 handle message, key: %s, offset: %d, value: %s", message.Key, message.Offset, message.Value)
 		time.Sleep(2 * time.Second)
 		return nil
 	})
 
-	c1 := NewSaramaConsumer(brokers, topics, groupId)
-	c1.LooperSync(func(ctx context.Context, message *sarama.ConsumerMessage) error {
-		t.Logf("consumer1 handle message, key: %s, value: %s", message.Key, message.Value)
-		time.Sleep(2 * time.Second)
-		return nil
+	proc.AddShutdownListener(func() {
+		done.Close()
 	})
 
-	defer func() {
-		c0.Release()
-		c1.Release()
-	}()
-}
-
-func TestSaramaKafkaBroadcastConsumer(t *testing.T) {
-	c := NewSaramaBroadcastConsumer(brokers, topics, groupId)
-	c.LooperSync(func(ctx context.Context, message *sarama.ConsumerMessage) error {
-		t.Logf("handle message, key: %s, value: %s", message.Key, message.Value)
-		time.Sleep(2 * time.Second)
-		return nil
-	})
-
-	defer c.Release()
+	<-done.Done()
 }

@@ -4,9 +4,15 @@
 
 package mq
 
+type Header string
+
 const (
-	TraceId        = "x-mq-trace-id"
-	TraceMqTopic   = "x-mq-topic"
-	TraceMqKey     = "x-mq-key"
-	TraceMqPayload = "x-mq-payload"
+	HeaderTraceId = "x-mq-trace-id"
+	HeaderTopic   = "x-mq-topic"
+	HeaderKey     = "x-mq-key"
+	HeaderPayload = "x-mq-payload"
 )
+
+func (h Header) String() string {
+	return string(h)
+}

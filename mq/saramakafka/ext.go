@@ -9,10 +9,10 @@ import (
 	"github.com/yyxxgame/gopkg/mq"
 )
 
-func GetTraceIdFromHeader(headers []*sarama.RecordHeader) string {
-	for _, h := range headers {
-		if string(h.Key) == mq.TraceId {
-			return string(h.Value)
+func GetHeaderValue(header mq.Header, headers []*sarama.RecordHeader) string {
+	for _, item := range headers {
+		if string(item.Key) == header.String() {
+			return string(item.Value)
 		}
 	}
 	return ""
