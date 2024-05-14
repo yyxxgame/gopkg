@@ -46,7 +46,6 @@ func NewSaramaKafkaProducer(brokers []string, opts ...Option) IProducer {
 		p.partitioner = sarama.NewRoundRobinPartitioner
 	}
 	config.Producer.Partitioner = p.partitioner
-	config.Producer.Interceptors = append(config.Producer.Interceptors, p)
 
 	if p.username == "" || p.password == "" {
 		config.Net.SASL.Enable = false
@@ -96,7 +95,9 @@ func (p *producer) PublishCtx(ctx context.Context, topic, key string, bMsg []byt
 }
 
 func (p *producer) publishMessage(ctx context.Context, message *sarama.ProducerMessage) error {
+	p.beforeProduceMessage(message)
 	partition, offset, err := p.SendMessage(message)
+	p.afterProduceMessage(message, err)
 
 	if err != nil {
 		logx.WithContext(ctx).Errorf("[SARAMA-KAFKA-ERROR]: publishMessage.SendMessage to topic: %s, on error: %v", message.Topic, err)
@@ -104,7 +105,6 @@ func (p *producer) publishMessage(ctx context.Context, message *sarama.ProducerM
 	}
 
 	logx.WithContext(ctx).Infof("[SARAMA-KAFKA]: publishMessage.SendMessage to topic: %s, on success, partition: %d, offset: %v", message.Topic, partition, offset)
-
 	return nil
 }
 
@@ -112,8 +112,14 @@ func (p *producer) Release() {
 	_ = p.Close()
 }
 
-func (p *producer) OnSend(message *sarama.ProducerMessage) {
+func (p *producer) beforeProduceMessage(message *sarama.ProducerMessage) {
 	for _, interceptor := range p.producerInterceptors {
-		interceptor(message)
+		interceptor.BeforeProduce(message)
+	}
+}
+
+func (p *producer) afterProduceMessage(message *sarama.ProducerMessage, err error) {
+	for _, interceptor := range p.producerInterceptors {
+		interceptor.AfterProduce(message, err)
 	}
 }
