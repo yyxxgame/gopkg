@@ -13,7 +13,6 @@ type (
 	OptionConf struct {
 		username             string
 		password             string
-		retries              int
 		producerInterceptors []ProducerInterceptor
 		consumerInterceptors []ConsumerInterceptor
 		partitioner          sarama.PartitionerConstructor
@@ -30,12 +29,6 @@ func WithSaslPlaintext(username, password string) Option {
 	return func(c *OptionConf) {
 		c.username = username
 		c.password = password
-	}
-}
-
-func WithRetries(retries int) Option {
-	return func(c *OptionConf) {
-		c.retries = retries
 	}
 }
 
