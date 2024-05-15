@@ -9,30 +9,31 @@ import (
 
 	"github.com/IBM/sarama"
 	"github.com/yyxxgame/gopkg/mq"
+	"github.com/yyxxgame/gopkg/mq/saramakafka/internal"
 	"github.com/yyxxgame/gopkg/xtrace"
 	"github.com/zeromicro/go-zero/core/logx"
-	"go.opentelemetry.io/otel/attribute"
 	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
 type (
 	IProducer interface {
-		Publish(topic, key string, bMsg []byte) error
-		PublishCtx(ctx context.Context, topic, key string, bMsg []byte) error
+		Publish(topic, key, payload string) error
+		PublishCtx(ctx context.Context, topic, key, payload string) error
 		Release()
 	}
 
 	producer struct {
 		*OptionConf
+		hooks     []internal.Hook
+		finalHook internal.Hook
 		sarama.SyncProducer
 	}
 )
 
 func NewSaramaKafkaProducer(brokers []string, opts ...Option) IProducer {
 	p := &producer{
-		OptionConf: &OptionConf{
-			producerInterceptors: []ProducerInterceptor{},
-		},
+		OptionConf: &OptionConf{},
+		hooks:      []internal.Hook{},
 	}
 	for _, opt := range opts {
 		opt(p.OptionConf)
@@ -63,42 +64,41 @@ func NewSaramaKafkaProducer(brokers []string, opts ...Option) IProducer {
 
 	p.SyncProducer = syncProducer
 
+	if p.tracer != nil {
+		p.hooks = append(p.hooks, internal.NewTraceHook(p.tracer, oteltrace.SpanKindProducer).Handle)
+	}
+
+	p.hooks = append(p.hooks, internal.NewDurationHook(oteltrace.SpanKindProducer).Handle)
+
+	p.finalHook = internal.ChainHooks(p.hooks...)
+
 	return p
 }
 
-func (p *producer) Publish(topic, key string, bMsg []byte) error {
-	return p.PublishCtx(context.Background(), topic, key, bMsg)
+func (p *producer) Publish(topic, key, payload string) error {
+	return p.PublishCtx(context.Background(), topic, key, payload)
 }
 
-func (p *producer) PublishCtx(ctx context.Context, topic, key string, bMsg []byte) error {
-	traceId := xtrace.GetTraceId(ctx).String()
-	message := &sarama.ProducerMessage{}
-	message.Key = sarama.StringEncoder(key)
-	message.Topic = topic
-	message.Value = sarama.ByteEncoder(bMsg)
+func (p *producer) PublishCtx(ctx context.Context, topic, key, payload string) error {
+	return p.finalHook(ctx, topic, key, payload, func(ctx context.Context, topic, key, payload string) error {
+		traceId := xtrace.GetTraceId(ctx).String()
+		message := &sarama.ProducerMessage{}
+		message.Key = sarama.StringEncoder(key)
+		message.Topic = topic
+		message.Value = sarama.StringEncoder(payload)
+		message.Headers = []sarama.RecordHeader{
+			{
+				Key:   sarama.ByteEncoder(mq.HeaderTraceId),
+				Value: sarama.ByteEncoder(traceId),
+			},
+		}
 
-	if p.tracer == nil || traceId == "" {
-		return p.publishMessage(ctx, message)
-	}
-
-	traceHeader := sarama.RecordHeader{
-		Key:   sarama.ByteEncoder(mq.HeaderKey),
-		Value: sarama.ByteEncoder(traceId),
-	}
-	message.Headers = []sarama.RecordHeader{traceHeader}
-	return xtrace.WithTraceHook(ctx, p.tracer, oteltrace.SpanKindProducer, "saramakafka.publishMessage", func(ctx context.Context) error {
-		return p.publishMessage(ctx, message)
-	},
-		attribute.String(mq.HeaderTopic, topic),
-		attribute.String(mq.HeaderKey, key),
-		attribute.String(mq.HeaderPayload, string(bMsg)))
+		return p.produce(ctx, message)
+	})
 }
 
-func (p *producer) publishMessage(ctx context.Context, message *sarama.ProducerMessage) error {
-	p.beforeProduceMessage(message)
+func (p *producer) produce(ctx context.Context, message *sarama.ProducerMessage) error {
 	partition, offset, err := p.SendMessage(message)
-	p.afterProduceMessage(message, err)
-
 	if err != nil {
 		logx.WithContext(ctx).Errorf("[SARAMA-KAFKA-ERROR]: publishMessage.SendMessage to topic: %s, on error: %v", message.Topic, err)
 		return err
@@ -110,16 +110,4 @@ func (p *producer) publishMessage(ctx context.Context, message *sarama.ProducerM
 
 func (p *producer) Release() {
 	_ = p.Close()
-}
-
-func (p *producer) beforeProduceMessage(message *sarama.ProducerMessage) {
-	for _, interceptor := range p.producerInterceptors {
-		interceptor.BeforeProduce(message)
-	}
-}
-
-func (p *producer) afterProduceMessage(message *sarama.ProducerMessage, err error) {
-	for _, interceptor := range p.producerInterceptors {
-		interceptor.AfterProduce(message, err)
-	}
 }

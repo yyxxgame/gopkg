@@ -11,12 +11,10 @@ import (
 
 type (
 	OptionConf struct {
-		username             string
-		password             string
-		producerInterceptors []ProducerInterceptor
-		consumerInterceptors []ConsumerInterceptor
-		partitioner          sarama.PartitionerConstructor
-		tracer               oteltrace.Tracer
+		username    string
+		password    string
+		tracer      oteltrace.Tracer
+		partitioner sarama.PartitionerConstructor
 	}
 
 	Option func(c *OptionConf)
@@ -32,18 +30,6 @@ func WithSaslPlaintext(username, password string) Option {
 func WithPartitioner(partitioner sarama.PartitionerConstructor) Option {
 	return func(c *OptionConf) {
 		c.partitioner = partitioner
-	}
-}
-
-func WithProducerInterceptor(interceptor ProducerInterceptor) Option {
-	return func(c *OptionConf) {
-		c.producerInterceptors = append(c.producerInterceptors, interceptor)
-	}
-}
-
-func WithConsumerInterceptor(interceptor ConsumerInterceptor) Option {
-	return func(c *OptionConf) {
-		c.consumerInterceptors = append(c.consumerInterceptors, interceptor)
 	}
 }
 

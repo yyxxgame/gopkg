@@ -6,53 +6,53 @@ package xtrace
 
 import (
 	"context"
-	"github.com/yyxxgame/gopkg/internal/utils"
-	"go.opentelemetry.io/otel"
+
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
-	"go.opentelemetry.io/otel/propagation"
 	oteltrace "go.opentelemetry.io/otel/trace"
-	"net/http"
 )
 
 type HookFunc func(ctx context.Context) error
 
 func WithTraceHook(ctx context.Context, tracer oteltrace.Tracer, spanKind oteltrace.SpanKind, name string, hook HookFunc, kv ...attribute.KeyValue) error {
 	spanCtx, span := tracer.Start(ctx, name, oteltrace.WithSpanKind(spanKind))
-	span.AddEvent(name, oteltrace.WithAttributes(kv...))
+	span.SetAttributes(kv...)
 	defer span.End()
-	if err := hook(spanCtx); err != nil {
+
+	err := hook(spanCtx)
+	if err != nil {
 		span.SetStatus(codes.Error, err.Error())
 		span.RecordError(err)
 		return err
-	} else {
-		span.SetStatus(codes.Ok, "")
 	}
+
+	span.SetStatus(codes.Ok, "")
+
 	return nil
 }
 
 func RunWithTraceHook(tracer oteltrace.Tracer, spanKind oteltrace.SpanKind, traceId string, name string, hook HookFunc, kv ...attribute.KeyValue) error {
-	propagator := otel.GetTextMapPropagator()
-	header := http.Header{}
-	if len(traceId) != 0 {
-		header.Set("x-trace-id", traceId)
+	var ctx context.Context
+	if traceId == "" {
+		ctx = context.Background()
+	} else {
+		traceIdFromHex, _ := oteltrace.TraceIDFromHex(traceId)
+		ctx = oteltrace.ContextWithSpanContext(ctx, oteltrace.NewSpanContext(oteltrace.SpanContextConfig{
+			TraceID: traceIdFromHex,
+		}))
 	}
-	ctx := propagator.Extract(context.Background(), propagation.HeaderCarrier(header))
-	spanName := utils.CallerFuncName()
-	traceIdFromHex, _ := oteltrace.TraceIDFromHex(traceId)
-	ctx = oteltrace.ContextWithSpanContext(ctx, oteltrace.NewSpanContext(oteltrace.SpanContextConfig{
-		TraceID: traceIdFromHex,
-	}))
-	spanCtx, span := tracer.Start(ctx, spanName, oteltrace.WithSpanKind(spanKind))
-	span.AddEvent(name, oteltrace.WithAttributes(kv...))
+
+	spanCtx, span := tracer.Start(ctx, name, oteltrace.WithSpanKind(spanKind))
+	span.SetAttributes(kv...)
 	defer span.End()
-	propagator.Inject(spanCtx, propagation.HeaderCarrier(header))
-	if err := hook(spanCtx); err != nil {
+
+	err := hook(spanCtx)
+	if err != nil {
 		span.SetStatus(codes.Error, err.Error())
 		span.RecordError(err)
 		return err
-	} else {
-		span.SetStatus(codes.Ok, "")
 	}
+
+	span.SetStatus(codes.Ok, "")
 	return nil
 }

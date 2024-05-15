@@ -9,10 +9,9 @@ import (
 
 	"github.com/IBM/sarama"
 	"github.com/yyxxgame/gopkg/mq"
+	"github.com/yyxxgame/gopkg/mq/saramakafka/internal"
 	"github.com/yyxxgame/gopkg/syncx/gopool"
-	"github.com/yyxxgame/gopkg/xtrace"
 	"github.com/zeromicro/go-zero/core/logx"
-	"go.opentelemetry.io/otel/attribute"
 	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
@@ -24,7 +23,9 @@ type (
 
 	consumer struct {
 		*OptionConf
-		topics []string
+		topics    []string
+		hooks     []internal.Hook
+		finalHook internal.Hook
 		sarama.ConsumerGroup
 		handler ConsumerHandler
 	}
@@ -34,10 +35,8 @@ type (
 
 func NewSaramaKafkaConsumer(brokers, topics []string, groupId string, opts ...Option) IConsumer {
 	c := &consumer{
-		OptionConf: &OptionConf{
-			consumerInterceptors: []ConsumerInterceptor{},
-		},
-		topics: topics,
+		OptionConf: &OptionConf{},
+		topics:     topics,
 	}
 
 	for _, opt := range opts {
@@ -58,6 +57,14 @@ func NewSaramaKafkaConsumer(brokers, topics []string, groupId string, opts ...Op
 	}
 
 	c.ConsumerGroup = consumerGroup
+
+	if c.tracer != nil {
+		c.hooks = append(c.hooks, internal.NewTraceHook(c.tracer, oteltrace.SpanKindConsumer).Handle)
+	}
+
+	c.hooks = append(c.hooks, internal.NewDurationHook(oteltrace.SpanKindConsumer).Handle)
+
+	c.finalHook = internal.ChainHooks(c.hooks...)
 
 	return c
 }
@@ -93,27 +100,26 @@ func (c *consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim saram
 	// https://github.com/IBM/sarama/blob/main/consumer_group.go#L27-L29
 	for {
 		select {
-		case message, ok := <-claim.Messages():
-			if !ok {
-				return nil
-			}
+		case message := <-claim.Messages():
 			for _, topic := range c.topics {
-
 				if topic != message.Topic {
 					continue
 				}
 
+				var ctx context.Context
 				traceId := c.getHeaderValue(mq.HeaderTraceId, message.Headers)
-				if c.tracer == nil || traceId == "" {
-					_ = c.handleMessage(context.Background(), session, message)
+				if traceId == "" {
+					ctx = context.Background()
 				} else {
-					_ = xtrace.RunWithTraceHook(c.tracer, oteltrace.SpanKindConsumer, traceId, "saramakafka.ConsumeClaim", func(ctx context.Context) error {
-						return c.handleMessage(ctx, session, message)
-					},
-						attribute.String(mq.HeaderTopic, message.Topic),
-						attribute.String(mq.HeaderKey, string(message.Key)),
-						attribute.String(mq.HeaderPayload, string(message.Value)))
+					traceIdFromHex, _ := oteltrace.TraceIDFromHex(traceId)
+					ctx = oteltrace.ContextWithSpanContext(context.Background(), oteltrace.NewSpanContext(oteltrace.SpanContextConfig{
+						TraceID: traceIdFromHex,
+					}))
 				}
+
+				_ = c.finalHook(ctx, message.Topic, string(message.Key), string(message.Value), func(ctx context.Context, topic, key, payload string) error {
+					return c.handleMessage(ctx, session, message)
+				})
 			}
 		case <-session.Context().Done():
 			// Should return when `session.Context()` is done.
@@ -125,29 +131,13 @@ func (c *consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim saram
 }
 
 func (c *consumer) handleMessage(ctx context.Context, session sarama.ConsumerGroupSession, message *sarama.ConsumerMessage) error {
-	c.beforeProduceMessage(message)
 	err := c.handler(ctx, message)
-	c.afterProduceMessage(message, err)
-
 	if err != nil {
 		logx.WithContext(ctx).Errorf("[SARAMA-KAFKA-ERROR]: ConsumeClaim.handleMessage on error: %v", err)
 		return err
 	}
-
 	session.MarkMessage(message, "")
 	return nil
-}
-
-func (c *consumer) beforeProduceMessage(message *sarama.ConsumerMessage) {
-	for _, interceptor := range c.consumerInterceptors {
-		interceptor.BeforeConsume(message)
-	}
-}
-
-func (c *consumer) afterProduceMessage(message *sarama.ConsumerMessage, err error) {
-	for _, interceptor := range c.consumerInterceptors {
-		interceptor.AfterConsume(message, err)
-	}
 }
 
 func (c *consumer) getHeaderValue(header mq.Header, headers []*sarama.RecordHeader) string {
