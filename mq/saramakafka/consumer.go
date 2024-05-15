@@ -106,13 +106,11 @@ func (c *consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim saram
 					continue
 				}
 
-				var ctx context.Context
+				ctx := context.Background()
 				traceId := c.getHeaderValue(mq.HeaderTraceId, message.Headers)
-				if traceId == "" {
-					ctx = context.Background()
-				} else {
+				if traceId != "" {
 					traceIdFromHex, _ := oteltrace.TraceIDFromHex(traceId)
-					ctx = oteltrace.ContextWithSpanContext(context.Background(), oteltrace.NewSpanContext(oteltrace.SpanContextConfig{
+					ctx = oteltrace.ContextWithSpanContext(ctx, oteltrace.NewSpanContext(oteltrace.SpanContextConfig{
 						TraceID: traceIdFromHex,
 					}))
 				}
