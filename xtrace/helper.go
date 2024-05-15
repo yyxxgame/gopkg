@@ -8,22 +8,23 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
+	"net/http"
+
 	gozerotrace "github.com/zeromicro/go-zero/core/trace"
 	"github.com/zeromicro/go-zero/rest"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/propagation"
-	"go.opentelemetry.io/otel/trace"
-	"io"
-	"net/http"
+	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
-func GetTraceId(ctx context.Context) trace.TraceID {
+// GetTraceId get otel TraceId
+func GetTraceId(ctx context.Context) oteltrace.TraceID {
 	/*
 		get trace id
 	*/
-	span := trace.SpanFromContext(ctx)
-	return span.SpanContext().TraceID()
+	return oteltrace.SpanContextFromContext(ctx).TraceID()
 }
 
 func GetCarrier(ctx context.Context) *propagation.HeaderCarrier {
@@ -36,7 +37,7 @@ func AddTags(ctx context.Context, kv ...attribute.KeyValue) {
 	/*
 		add tags by ctx
 	*/
-	span := trace.SpanFromContext(ctx)
+	span := oteltrace.SpanFromContext(ctx)
 	span.SetAttributes(kv...)
 }
 
@@ -51,8 +52,8 @@ func AddEvent(ctx context.Context, name string, kv ...attribute.KeyValue) {
 	/*
 		add evnet by ctx
 	*/
-	span := trace.SpanFromContext(ctx)
-	span.AddEvent(name, trace.WithAttributes(kv...))
+	span := oteltrace.SpanFromContext(ctx)
+	span.AddEvent(name, oteltrace.WithAttributes(kv...))
 }
 
 func TracingOnApiSvr(server *rest.Server) {
@@ -83,7 +84,7 @@ func TracingOnApiSvr(server *rest.Server) {
 	})
 }
 
-func MakeHeaderContext(name string) (context.Context, trace.Span) {
+func MakeHeaderContext(name string) (context.Context, oteltrace.Span) {
 	tracer := otel.GetTracerProvider().Tracer(gozerotrace.TraceName)
-	return tracer.Start(context.Background(), name, trace.WithSpanKind(trace.SpanKindInternal))
+	return tracer.Start(context.Background(), name, oteltrace.WithSpanKind(oteltrace.SpanKindInternal))
 }
