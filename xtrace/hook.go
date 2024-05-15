@@ -32,10 +32,8 @@ func WithTraceHook(ctx context.Context, tracer oteltrace.Tracer, spanKind oteltr
 }
 
 func RunWithTraceHook(tracer oteltrace.Tracer, spanKind oteltrace.SpanKind, traceId string, name string, hook HookFunc, kv ...attribute.KeyValue) error {
-	var ctx context.Context
-	if traceId == "" {
-		ctx = context.Background()
-	} else {
+	ctx := context.Background()
+	if traceId != "" {
 		traceIdFromHex, _ := oteltrace.TraceIDFromHex(traceId)
 		ctx = oteltrace.ContextWithSpanContext(ctx, oteltrace.NewSpanContext(oteltrace.SpanContextConfig{
 			TraceID: traceIdFromHex,
