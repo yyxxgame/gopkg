@@ -11,10 +11,11 @@ import (
 
 type (
 	OptionConf struct {
-		username    string
-		password    string
-		tracer      oteltrace.Tracer
-		partitioner sarama.PartitionerConstructor
+		username      string
+		password      string
+		tracer        oteltrace.Tracer
+		partitioner   sarama.PartitionerConstructor
+		enableStatLag bool
 	}
 
 	Option func(c *OptionConf)
@@ -36,5 +37,11 @@ func WithPartitioner(partitioner sarama.PartitionerConstructor) Option {
 func WithTracer(tracer oteltrace.Tracer) Option {
 	return func(c *OptionConf) {
 		c.tracer = tracer
+	}
+}
+
+func EnableStatLag() Option {
+	return func(c *OptionConf) {
+		c.enableStatLag = true
 	}
 }

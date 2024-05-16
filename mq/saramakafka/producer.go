@@ -9,7 +9,6 @@ import (
 
 	"github.com/IBM/sarama"
 	"github.com/yyxxgame/gopkg/mq"
-	"github.com/yyxxgame/gopkg/mq/saramakafka/internal"
 	"github.com/yyxxgame/gopkg/xtrace"
 	"github.com/zeromicro/go-zero/core/logx"
 	oteltrace "go.opentelemetry.io/otel/trace"
@@ -24,8 +23,8 @@ type (
 
 	producer struct {
 		*OptionConf
-		hooks     []internal.Hook
-		finalHook internal.Hook
+		hooks     []hook
+		finalHook hook
 		sarama.SyncProducer
 	}
 )
@@ -33,7 +32,7 @@ type (
 func NewSaramaKafkaProducer(brokers []string, opts ...Option) IProducer {
 	p := &producer{
 		OptionConf: &OptionConf{},
-		hooks:      []internal.Hook{},
+		hooks:      []hook{},
 	}
 	for _, opt := range opts {
 		opt(p.OptionConf)
@@ -65,12 +64,12 @@ func NewSaramaKafkaProducer(brokers []string, opts ...Option) IProducer {
 	p.SyncProducer = syncProducer
 
 	if p.tracer != nil {
-		p.hooks = append(p.hooks, internal.NewTraceHook(p.tracer, oteltrace.SpanKindProducer).Handle)
+		p.hooks = append(p.hooks, newTraceHook(p.tracer, oteltrace.SpanKindProducer).Handle)
 	}
 
-	p.hooks = append(p.hooks, internal.NewDurationHook(oteltrace.SpanKindProducer).Handle)
+	p.hooks = append(p.hooks, newProducerDurationHook().Handle)
 
-	p.finalHook = internal.ChainHooks(p.hooks...)
+	p.finalHook = chainHooks(p.hooks...)
 
 	return p
 }

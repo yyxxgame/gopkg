@@ -2,28 +2,26 @@
 //@Time     2024/5/15
 //@Author   #Suyghur,
 
-package internal
+package saramakafka
 
-import (
-	"context"
-)
+import "context"
 
 type (
-	HookFunc func(ctx context.Context, topic, key, payload string) error
+	hookFunc func(ctx context.Context, topic, key, payload string) error
 
-	Hook func(ctx context.Context, topic, key, payload string, next HookFunc) error
+	hook func(ctx context.Context, topic, key, payload string, next hookFunc) error
 )
 
-func ChainHooks(hooks ...Hook) Hook {
+func chainHooks(hooks ...hook) hook {
 	if len(hooks) == 0 {
 		return nil
 	}
-	return func(ctx context.Context, topic, key, payload string, next HookFunc) error {
+	return func(ctx context.Context, topic, key, payload string, next hookFunc) error {
 		return hooks[0](ctx, topic, key, payload, getHookFunc(hooks, 0, next))
 	}
 }
 
-func getHookFunc(hooks []Hook, index int, final HookFunc) HookFunc {
+func getHookFunc(hooks []hook, index int, final hookFunc) hookFunc {
 	if index == len(hooks)-1 {
 		return final
 	}
