@@ -18,7 +18,7 @@ import (
 )
 
 var (
-	brokers = []string{"101.33.209.36:9092"}
+	brokers = []string{"localhost:9092"}
 	topics  = []string{"test-kafka-topic"}
 	groupId = "gopkg_test_group"
 )
