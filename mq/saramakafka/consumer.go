@@ -216,7 +216,7 @@ func (c *consumer) statLag() {
 			offset := consumerGroupOffsets.Blocks[topic][partition].Offset
 			lag := latestOffset - offset
 			total += lag
-			metricConsumerGroupLag.Set(float64(lag), topic, c.groupId)
+			metricConsumerGroupLag.Set(float64(lag), topic, c.groupId, string(partition))
 		}
 		metricConsumerGroupLagSum.Set(float64(total), topic, c.groupId)
 	})

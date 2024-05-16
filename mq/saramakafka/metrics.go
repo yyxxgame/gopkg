@@ -48,7 +48,7 @@ var (
 		Subsystem: "consumer_group",
 		Name:      "lag",
 		Help:      "current approximate lag of a consumer group at topic/partition",
-		Labels:    []string{"topic", "group_id"},
+		Labels:    []string{"topic", "group_id", "partition"},
 	})
 
 	metricConsumerGroupLagSum = gozerometric.NewGaugeVec(&gozerometric.GaugeVecOpts{
