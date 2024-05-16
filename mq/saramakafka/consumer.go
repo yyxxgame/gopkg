@@ -192,7 +192,7 @@ func (c *consumer) handleMessage(ctx context.Context, session sarama.ConsumerGro
 }
 
 func (c *consumer) statLag() {
-	if !c.enableStatLag {
+	if c.disableStatLag {
 		return
 	}
 
@@ -217,7 +217,6 @@ func (c *consumer) statLag() {
 			offset := consumerGroupOffsets.Blocks[topic][partition].Offset
 			lag := latestOffset - offset
 			total += lag
-			logx.Infof("partition: %d", partition)
 			metricLag.Set(float64(lag), topic, c.groupId, strconv.FormatInt(int64(partition), 10))
 		}
 		metricLagSum.Set(float64(total), topic, c.groupId)
