@@ -40,7 +40,7 @@ func WithTracer(tracer oteltrace.Tracer) Option {
 	}
 }
 
-func EnableStatLag() Option {
+func WithEnableStatLag() Option {
 	return func(c *OptionConf) {
 		c.enableStatLag = true
 	}

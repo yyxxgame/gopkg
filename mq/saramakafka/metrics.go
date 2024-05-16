@@ -43,7 +43,7 @@ var (
 		Labels:    []string{"topic", "group_id"},
 	})
 
-	metricConsumerGroupLag = gozerometric.NewGaugeVec(&gozerometric.GaugeVecOpts{
+	metricLag = gozerometric.NewGaugeVec(&gozerometric.GaugeVecOpts{
 		Namespace: namespace,
 		Subsystem: "consumer_group",
 		Name:      "lag",
@@ -51,7 +51,7 @@ var (
 		Labels:    []string{"topic", "group_id", "partition"},
 	})
 
-	metricConsumerGroupLagSum = gozerometric.NewGaugeVec(&gozerometric.GaugeVecOpts{
+	metricLagSum = gozerometric.NewGaugeVec(&gozerometric.GaugeVecOpts{
 		Namespace: namespace,
 		Subsystem: "consumer_group",
 		Name:      "lag_sum",
