@@ -6,12 +6,16 @@ package saramakafka
 
 import (
 	"context"
+	"errors"
+	"time"
 
 	"github.com/IBM/sarama"
 	"github.com/yyxxgame/gopkg/mq"
-	"github.com/yyxxgame/gopkg/mq/saramakafka/internal"
 	"github.com/yyxxgame/gopkg/syncx/gopool"
+	"github.com/zeromicro/go-zero/core/fx"
 	"github.com/zeromicro/go-zero/core/logx"
+	"github.com/zeromicro/go-zero/core/syncx"
+	"github.com/zeromicro/go-zero/core/timex"
 	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
@@ -23,9 +27,15 @@ type (
 
 	consumer struct {
 		*OptionConf
-		topics    []string
-		hooks     []internal.Hook
-		finalHook internal.Hook
+		done       *syncx.DoneChan
+		hasDone    *syncx.AtomicBool
+		groupId    string
+		topics     []string
+		hooks      []hook
+		finalHook  hook
+		statTicker timex.Ticker
+		sarama.Client
+		sarama.ClusterAdmin
 		sarama.ConsumerGroup
 		handler ConsumerHandler
 	}
@@ -36,7 +46,11 @@ type (
 func NewSaramaKafkaConsumer(brokers, topics []string, groupId string, opts ...Option) IConsumer {
 	c := &consumer{
 		OptionConf: &OptionConf{},
+		done:       syncx.NewDoneChan(),
+		hasDone:    syncx.ForAtomicBool(false),
+		groupId:    groupId,
 		topics:     topics,
+		statTicker: timex.NewTicker(time.Second * 60),
 	}
 
 	for _, opt := range opts {
@@ -50,7 +64,21 @@ func NewSaramaKafkaConsumer(brokers, topics []string, groupId string, opts ...Op
 	config.Consumer.Offsets.Retry.Max = 99
 	config.Consumer.Offsets.AutoCommit.Enable = true
 
-	consumerGroup, err := sarama.NewConsumerGroup(brokers, groupId, config)
+	client, err := sarama.NewClient(brokers, config)
+	if err != nil {
+		logx.Errorf("[SARAMA-KAFKA-ERROR]: NewSaramaKafkaConsumer on error: %v", err)
+		panic(err)
+	}
+	c.Client = client
+
+	clusterAdmin, err := sarama.NewClusterAdminFromClient(c.Client)
+	if err != nil {
+		logx.Errorf("[SARAMA-KAFKA-ERROR]: NewSaramaKafkaConsumer on error: %v", err)
+		panic(err)
+	}
+	c.ClusterAdmin = clusterAdmin
+
+	consumerGroup, err := sarama.NewConsumerGroupFromClient(groupId, c.Client)
 	if err != nil {
 		logx.Errorf("[SARAMA-KAFKA-ERROR]: NewSaramaKafkaConsumer on error: %v", err)
 		panic(err)
@@ -59,12 +87,25 @@ func NewSaramaKafkaConsumer(brokers, topics []string, groupId string, opts ...Op
 	c.ConsumerGroup = consumerGroup
 
 	if c.tracer != nil {
-		c.hooks = append(c.hooks, internal.NewTraceHook(c.tracer, oteltrace.SpanKindConsumer).Handle)
+		c.hooks = append(c.hooks, newTraceHook(c.tracer, oteltrace.SpanKindConsumer).Handle)
 	}
 
-	c.hooks = append(c.hooks, internal.NewDurationHook(oteltrace.SpanKindConsumer).Handle)
+	c.hooks = append(c.hooks, newConsumerDurationHook(groupId).Handle)
 
-	c.finalHook = internal.ChainHooks(c.hooks...)
+	c.finalHook = chainHooks(c.hooks...)
+
+	gopool.Go(func() {
+		for {
+			select {
+			case <-c.statTicker.Chan():
+				c.statLag()
+			case <-c.done.Done():
+				c.statTicker.Stop()
+				c.hasDone.Set(true)
+				return
+			}
+		}
+	})
 
 	return c
 }
@@ -73,16 +114,27 @@ func (c *consumer) Looper(handler ConsumerHandler) {
 	c.handler = handler
 	gopool.Go(func() {
 		for {
-			if err := c.Consume(context.Background(), c.topics, c); err != nil {
-				logx.Error(err.Error())
+			err := c.Consume(context.Background(), c.topics, c)
+			if err != nil {
+				if errors.Is(err, sarama.ErrClosedConsumerGroup) {
+					return
+				}
+				logx.Errorf("[SARAMA-KAFKA-ERROR]: Consume on error: %v", err)
 				panic(err.Error())
+			}
+
+			if c.hasDone.True() {
+				return
 			}
 		}
 	})
 }
 func (c *consumer) Release() {
-	c.PauseAll()
-	_ = c.Close()
+	c.done.Close()
+	c.ConsumerGroup.PauseAll()
+	_ = c.ConsumerGroup.Close()
+	_ = c.ClusterAdmin.Close()
+	_ = c.Client.Close()
 }
 
 func (c *consumer) Setup(_ sarama.ConsumerGroupSession) error {
@@ -136,6 +188,38 @@ func (c *consumer) handleMessage(ctx context.Context, session sarama.ConsumerGro
 	}
 	session.MarkMessage(message, "")
 	return nil
+}
+
+func (c *consumer) statLag() {
+	if !c.enableStatLag {
+		return
+	}
+
+	fx.From(func(source chan<- any) {
+		for _, item := range c.topics {
+			source <- item
+		}
+	}).Parallel(func(item any) {
+		topic := item.(string)
+		var total int64
+		partitions, err := c.Client.Partitions(topic)
+		if err != nil {
+			return
+		}
+
+		consumerGroupOffsets, err := c.ClusterAdmin.ListConsumerGroupOffsets(c.groupId, map[string][]int32{topic: partitions})
+		if err != nil {
+			return
+		}
+		for _, partition := range partitions {
+			latestOffset, _ := c.GetOffset(topic, partition, sarama.OffsetNewest)
+			offset := consumerGroupOffsets.Blocks[topic][partition].Offset
+			lag := latestOffset - offset
+			total += lag
+			metricConsumerGroupLag.Set(float64(lag), topic, c.groupId)
+		}
+		metricConsumerGroupLagSum.Set(float64(total), topic, c.groupId)
+	})
 }
 
 func (c *consumer) getHeaderValue(header mq.Header, headers []*sarama.RecordHeader) string {
