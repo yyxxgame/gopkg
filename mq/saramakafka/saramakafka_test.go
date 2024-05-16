@@ -35,7 +35,7 @@ func TestSaramaKafkaProducer(t *testing.T) {
 func TestSaramaKafkaConsumer(t *testing.T) {
 	tracer := otel.GetTracerProvider().Tracer(gozerotrace.TraceName)
 	done := syncx.NewDoneChan()
-	c0 := NewSaramaKafkaConsumer(brokers, topics, groupId, WithTracer(tracer))
+	c0 := NewSaramaKafkaConsumer(brokers, topics, groupId, WithTracer(tracer), WithEnableStatLag())
 	c0.Looper(func(ctx context.Context, message *sarama.ConsumerMessage) error {
 		t.Logf("consumer0 handle message, key: %s, offset: %d, value: %s", message.Key, message.Offset, message.Value)
 		time.Sleep(2 * time.Second)

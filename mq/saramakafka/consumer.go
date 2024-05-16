@@ -7,6 +7,7 @@ package saramakafka
 import (
 	"context"
 	"errors"
+	"strconv"
 	"time"
 
 	"github.com/IBM/sarama"
@@ -216,9 +217,10 @@ func (c *consumer) statLag() {
 			offset := consumerGroupOffsets.Blocks[topic][partition].Offset
 			lag := latestOffset - offset
 			total += lag
-			metricConsumerGroupLag.Set(float64(lag), topic, c.groupId, string(partition))
+			logx.Infof("partition: %d", partition)
+			metricLag.Set(float64(lag), topic, c.groupId, strconv.FormatInt(int64(partition), 10))
 		}
-		metricConsumerGroupLagSum.Set(float64(total), topic, c.groupId)
+		metricLagSum.Set(float64(total), topic, c.groupId)
 	})
 }
 
