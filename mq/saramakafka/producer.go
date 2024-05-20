@@ -11,7 +11,6 @@ import (
 	"github.com/yyxxgame/gopkg/mq"
 	"github.com/yyxxgame/gopkg/xtrace"
 	"github.com/zeromicro/go-zero/core/logx"
-	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
 type (
@@ -23,16 +22,18 @@ type (
 
 	producer struct {
 		*OptionConf
-		hooks     []hook
-		finalHook hook
+		hooks     []ProducerHook
+		finalHook ProducerHook
 		sarama.SyncProducer
 	}
 )
 
 func NewSaramaKafkaProducer(brokers []string, opts ...Option) IProducer {
 	p := &producer{
-		OptionConf: &OptionConf{},
-		hooks:      []hook{},
+		OptionConf: &OptionConf{
+			producerHooks: []ProducerHook{},
+		},
+		hooks: []ProducerHook{},
 	}
 	for _, opt := range opts {
 		opt(p.OptionConf)
@@ -64,12 +65,14 @@ func NewSaramaKafkaProducer(brokers []string, opts ...Option) IProducer {
 	p.SyncProducer = syncProducer
 
 	if p.tracer != nil {
-		p.hooks = append(p.hooks, newTraceHook(p.tracer, oteltrace.SpanKindProducer).Handle)
+		p.hooks = append(p.hooks, newProducerTraceHook(p.tracer).Handle)
 	}
 
 	p.hooks = append(p.hooks, newProducerDurationHook().Handle)
 
-	p.finalHook = chainHooks(p.hooks...)
+	p.hooks = append(p.hooks, p.producerHooks...)
+
+	p.finalHook = chainProducerHooks(p.hooks...)
 
 	return p
 }
@@ -79,19 +82,19 @@ func (p *producer) Publish(topic, key, payload string) error {
 }
 
 func (p *producer) PublishCtx(ctx context.Context, topic, key, payload string) error {
-	return p.finalHook(ctx, topic, key, payload, func(ctx context.Context, topic, key, payload string) error {
-		traceId := xtrace.GetTraceId(ctx).String()
-		message := &sarama.ProducerMessage{}
-		message.Key = sarama.StringEncoder(key)
-		message.Topic = topic
-		message.Value = sarama.StringEncoder(payload)
-		message.Headers = []sarama.RecordHeader{
-			{
-				Key:   sarama.ByteEncoder(mq.HeaderTraceId),
-				Value: sarama.ByteEncoder(traceId),
-			},
-		}
+	traceId := xtrace.GetTraceId(ctx).String()
+	message := &sarama.ProducerMessage{}
+	message.Key = sarama.StringEncoder(key)
+	message.Topic = topic
+	message.Value = sarama.StringEncoder(payload)
+	message.Headers = []sarama.RecordHeader{
+		{
+			Key:   sarama.ByteEncoder(mq.HeaderTraceId),
+			Value: sarama.ByteEncoder(traceId),
+		},
+	}
 
+	return p.finalHook(ctx, message, func(ctx context.Context, message *sarama.ProducerMessage) error {
 		return p.produce(ctx, message)
 	})
 }

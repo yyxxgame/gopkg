@@ -7,6 +7,7 @@ package saramakafka
 import (
 	"context"
 
+	"github.com/IBM/sarama"
 	"github.com/zeromicro/go-zero/core/timex"
 )
 
@@ -21,10 +22,12 @@ func newProducerDurationHook() *producerDurationHook {
 	return &producerDurationHook{}
 }
 
-func (c *producerDurationHook) Handle(ctx context.Context, topic, key, payload string, next hookFunc) error {
+func (c *producerDurationHook) Handle(ctx context.Context, message *sarama.ProducerMessage, next ProducerHookFunc) error {
+	topic := message.Topic
+
 	start := timex.Now()
 
-	err := next(ctx, topic, key, payload)
+	err := next(ctx, message)
 
 	duration := timex.Since(start)
 
@@ -43,10 +46,12 @@ func newConsumerDurationHook(groupId string) *consumerDurationHook {
 
 }
 
-func (c *consumerDurationHook) Handle(ctx context.Context, topic, key, payload string, next hookFunc) error {
+func (c *consumerDurationHook) Handle(ctx context.Context, message *sarama.ConsumerMessage, next ConsumerHookFunc) error {
+	topic := message.Topic
+
 	start := timex.Now()
 
-	err := next(ctx, topic, key, payload)
+	err := next(ctx, message)
 
 	duration := timex.Since(start)
 
