@@ -39,7 +39,7 @@ var (
 		Namespace: namespace,
 		Subsystem: "consumer_group",
 		Name:      "error_total",
-		Help:      "kafka consumer group_client consumer error count.",
+		Help:      "kafka consumer group client consumer error count.",
 		Labels:    []string{"topic", "group_id"},
 	})
 

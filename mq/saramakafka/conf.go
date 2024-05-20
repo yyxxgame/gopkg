@@ -15,6 +15,8 @@ type (
 		password       string
 		tracer         oteltrace.Tracer
 		partitioner    sarama.PartitionerConstructor
+		producerHooks  []ProducerHook
+		consumerHooks  []ConsumerHook
 		disableStatLag bool
 	}
 
@@ -43,5 +45,17 @@ func WithTracer(tracer oteltrace.Tracer) Option {
 func WithDisableStatLag() Option {
 	return func(c *OptionConf) {
 		c.disableStatLag = true
+	}
+}
+
+func WithProducerHook(hook ProducerHook) Option {
+	return func(c *OptionConf) {
+		c.producerHooks = append(c.producerHooks, hook)
+	}
+}
+
+func WithConsumerHook(hook ConsumerHook) Option {
+	return func(c *OptionConf) {
+		c.consumerHooks = append(c.consumerHooks, hook)
 	}
 }

@@ -22,7 +22,7 @@ import (
 
 type (
 	IConsumer interface {
-		Looper(handler ConsumerHandler)
+		Loop(handler ConsumerHandler)
 		Release()
 	}
 
@@ -32,8 +32,8 @@ type (
 		hasDone    *syncx.AtomicBool
 		groupId    string
 		topics     []string
-		hooks      []hook
-		finalHook  hook
+		hooks      []ConsumerHook
+		finalHook  ConsumerHook
 		statTicker timex.Ticker
 		sarama.Client
 		sarama.ClusterAdmin
@@ -46,12 +46,15 @@ type (
 
 func NewSaramaKafkaConsumer(brokers, topics []string, groupId string, opts ...Option) IConsumer {
 	c := &consumer{
-		OptionConf: &OptionConf{},
+		OptionConf: &OptionConf{
+			consumerHooks: []ConsumerHook{},
+		},
 		done:       syncx.NewDoneChan(),
 		hasDone:    syncx.ForAtomicBool(false),
 		groupId:    groupId,
 		topics:     topics,
-		statTicker: timex.NewTicker(time.Second * 60),
+		hooks:      []ConsumerHook{},
+		statTicker: timex.NewTicker(time.Second * 30),
 	}
 
 	for _, opt := range opts {
@@ -88,12 +91,14 @@ func NewSaramaKafkaConsumer(brokers, topics []string, groupId string, opts ...Op
 	c.ConsumerGroup = consumerGroup
 
 	if c.tracer != nil {
-		c.hooks = append(c.hooks, newTraceHook(c.tracer, oteltrace.SpanKindConsumer).Handle)
+		c.hooks = append(c.hooks, newConsumerTraceHook(c.tracer).Handle)
 	}
 
 	c.hooks = append(c.hooks, newConsumerDurationHook(groupId).Handle)
 
-	c.finalHook = chainHooks(c.hooks...)
+	c.hooks = append(c.hooks, c.consumerHooks...)
+
+	c.finalHook = chainConsumerHooks(c.hooks...)
 
 	gopool.Go(func() {
 		for {
@@ -111,7 +116,7 @@ func NewSaramaKafkaConsumer(brokers, topics []string, groupId string, opts ...Op
 	return c
 }
 
-func (c *consumer) Looper(handler ConsumerHandler) {
+func (c *consumer) Loop(handler ConsumerHandler) {
 	c.handler = handler
 	gopool.Go(func() {
 		for {
@@ -168,7 +173,7 @@ func (c *consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim saram
 					}))
 				}
 
-				_ = c.finalHook(ctx, message.Topic, string(message.Key), string(message.Value), func(ctx context.Context, topic, key, payload string) error {
+				_ = c.finalHook(ctx, message, func(ctx context.Context, message *sarama.ConsumerMessage) error {
 					return c.handleMessage(ctx, session, message)
 				})
 			}
