@@ -1,7 +1,6 @@
 package prompusher
 
 import (
-	"regexp"
 	"time"
 
 	prom "github.com/prometheus/client_golang/prometheus"
@@ -9,6 +8,7 @@ import (
 	"github.com/yyxxgame/gopkg/syncx/gopool"
 	"github.com/zeromicro/go-zero/core/logx"
 	gozerometric "github.com/zeromicro/go-zero/core/metric"
+	"github.com/zeromicro/go-zero/core/proc"
 	gozerostat "github.com/zeromicro/go-zero/core/stat"
 	"github.com/zeromicro/go-zero/core/syncx"
 	"github.com/zeromicro/go-zero/core/sysx"
@@ -23,7 +23,6 @@ var (
 		Help:      "process cpu usage.",
 		Labels:    []string{},
 	})
-	matcher = regexp.MustCompile(`go_goroutines\{instance="([^"]*)",job="([^"]*)",project="([^"]*)"\}`)
 )
 
 type (
@@ -46,12 +45,7 @@ type (
 		done                         *syncx.DoneChan
 		instanceName                 string
 		enableCollectCpuUsageMetrics bool
-	}
-
-	pusherInfoPair struct {
-		jobName      string
-		projectName  string
-		instanceName string
+		enableStopWhenShutdown       bool
 	}
 
 	Option func(p *pusher)
@@ -67,6 +61,7 @@ func MustNewPromMetricsPusher(c PromPushConf, opts ...Option) IPromMetricsPusher
 		done:                         syncx.NewDoneChan(),
 		instanceName:                 sysx.Hostname(),
 		enableCollectCpuUsageMetrics: true,
+		enableStopWhenShutdown:       true,
 	}
 
 	for _, opt := range opts {
@@ -100,6 +95,11 @@ func (p *pusher) Start() {
 			}
 		}
 	})
+	if p.enableStopWhenShutdown {
+		proc.AddShutdownListener(func() {
+			p.Stop()
+		})
+	}
 }
 
 func (p *pusher) Stop() {
@@ -117,5 +117,11 @@ func WithInstanceName(instanceName string) Option {
 func WithCollectCpuUsageMetrics(enable bool) Option {
 	return func(p *pusher) {
 		p.enableCollectCpuUsageMetrics = enable
+	}
+}
+
+func WithStopWhenShutdown(enable bool) Option {
+	return func(p *pusher) {
+		p.enableStopWhenShutdown = enable
 	}
 }
