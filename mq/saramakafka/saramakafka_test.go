@@ -7,7 +7,6 @@ package saramakafka
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/IBM/sarama"
 	"github.com/stretchr/testify/assert"
@@ -15,8 +14,6 @@ import (
 	"github.com/zeromicro/go-zero/core/proc"
 	"github.com/zeromicro/go-zero/core/stringx"
 	"github.com/zeromicro/go-zero/core/syncx"
-	gozerotrace "github.com/zeromicro/go-zero/core/trace"
-	"go.opentelemetry.io/otel"
 	"go.uber.org/atomic"
 )
 
@@ -27,14 +24,13 @@ var (
 )
 
 func TestSaramaKafkaProducer(t *testing.T) {
-	tracer := otel.GetTracerProvider().Tracer(gozerotrace.TraceName)
 	onFakeHook := false
 	fakeProducerHook := func(ctx context.Context, message *sarama.ProducerMessage, next ProducerHookFunc) error {
 		logx.Infof("fake")
 		onFakeHook = true
 		return next(ctx, message)
 	}
-	p := NewSaramaKafkaProducer(brokers, WithTracer(tracer), WithProducerHook(fakeProducerHook))
+	p := NewProducer(brokers, WithProducerHook(fakeProducerHook))
 	err := p.Publish(topics[0], "test_message", stringx.Randn(16))
 
 	assert.Nil(t, err)
@@ -42,23 +38,24 @@ func TestSaramaKafkaProducer(t *testing.T) {
 }
 
 func TestSaramaKafkaConsumer(t *testing.T) {
-	tracer := otel.GetTracerProvider().Tracer(gozerotrace.TraceName)
+	done := syncx.NewDoneChan()
 	onFakeHookCount := atomic.NewInt64(0)
 	onMessageCount := atomic.NewInt64(0)
 	fakeConsumerHook := func(ctx context.Context, message *sarama.ConsumerMessage, next ConsumerHookFunc) error {
 		onFakeHookCount.Inc()
 		return next(ctx, message)
 	}
-	done := syncx.NewDoneChan()
-	c0 := NewSaramaKafkaConsumer(brokers, topics, groupId, WithTracer(tracer), WithDisableStatLag(), WithConsumerHook(fakeConsumerHook))
-	c0.Loop(func(ctx context.Context, message *sarama.ConsumerMessage) error {
-		t.Logf("consumer0 handle message, key: %s, offset: %d, value: %s", message.Key, message.Offset, message.Value)
-		time.Sleep(2 * time.Second)
+	handler := func(ctx context.Context, message *sarama.ConsumerMessage) error {
+		logx.Infof("handle message, partition: %d, offset: %d, key: %s, value: %s", message.Partition, message.Offset, message.Key, message.Value)
 		onMessageCount.Inc()
 		return nil
-	})
+	}
+
+	c0 := NewConsumer(brokers, topics, groupId, handler, WithDisableStatLag(), WithConsumerHook(fakeConsumerHook))
+	c0.Loop()
 
 	proc.AddShutdownListener(func() {
+		c0.Release()
 		done.Close()
 	})
 

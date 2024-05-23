@@ -7,6 +7,7 @@ package saramakafka
 import (
 	"context"
 	"errors"
+	"slices"
 	"strconv"
 	"time"
 
@@ -22,7 +23,7 @@ import (
 
 type (
 	IConsumer interface {
-		Loop(handler ConsumerHandler)
+		Loop()
 		Release()
 	}
 
@@ -44,7 +45,7 @@ type (
 	ConsumerHandler func(ctx context.Context, message *sarama.ConsumerMessage) error
 )
 
-func NewSaramaKafkaConsumer(brokers, topics []string, groupId string, opts ...Option) IConsumer {
+func NewConsumer(brokers, topics []string, groupId string, handler ConsumerHandler, opts ...Option) IConsumer {
 	c := &consumer{
 		OptionConf: &OptionConf{
 			consumerHooks: []ConsumerHook{},
@@ -55,6 +56,7 @@ func NewSaramaKafkaConsumer(brokers, topics []string, groupId string, opts ...Op
 		topics:     topics,
 		hooks:      []ConsumerHook{},
 		statTicker: timex.NewTicker(time.Second * 30),
+		handler:    handler,
 	}
 
 	for _, opt := range opts {
@@ -68,27 +70,34 @@ func NewSaramaKafkaConsumer(brokers, topics []string, groupId string, opts ...Op
 	config.Consumer.Offsets.Retry.Max = 99
 	config.Consumer.Offsets.AutoCommit.Enable = true
 
+	if c.username == "" || c.password == "" {
+		config.Net.SASL.Enable = false
+	} else {
+		config.Net.SASL.Enable = true
+		config.Net.SASL.User = c.username
+		config.Net.SASL.Password = c.password
+	}
+
 	client, err := sarama.NewClient(brokers, config)
 	if err != nil {
-		logx.Errorf("[SARAMA-KAFKA-ERROR]: NewSaramaKafkaConsumer on error: %v", err)
+		logx.Errorf("[SARAMA-KAFKA-ERROR]: NewConsumer on error: %v", err)
 		panic(err)
 	}
 	c.Client = client
 
+	consumerGroup, err := sarama.NewConsumerGroupFromClient(groupId, c.Client)
+	if err != nil {
+		logx.Errorf("[SARAMA-KAFKA-ERROR]: NewConsumerWithClient on error: %v", err)
+		panic(err)
+	}
+	c.ConsumerGroup = consumerGroup
+
 	clusterAdmin, err := sarama.NewClusterAdminFromClient(c.Client)
 	if err != nil {
-		logx.Errorf("[SARAMA-KAFKA-ERROR]: NewSaramaKafkaConsumer on error: %v", err)
+		logx.Errorf("[SARAMA-KAFKA-ERROR]: NewConsumerWithClient on error: %v", err)
 		panic(err)
 	}
 	c.ClusterAdmin = clusterAdmin
-
-	consumerGroup, err := sarama.NewConsumerGroupFromClient(groupId, c.Client)
-	if err != nil {
-		logx.Errorf("[SARAMA-KAFKA-ERROR]: NewSaramaKafkaConsumer on error: %v", err)
-		panic(err)
-	}
-
-	c.ConsumerGroup = consumerGroup
 
 	if c.tracer != nil {
 		c.hooks = append(c.hooks, newConsumerTraceHook(c.tracer).Handle)
@@ -116,10 +125,13 @@ func NewSaramaKafkaConsumer(brokers, topics []string, groupId string, opts ...Op
 	return c
 }
 
-func (c *consumer) Loop(handler ConsumerHandler) {
-	c.handler = handler
+func (c *consumer) Loop() {
 	gopool.Go(func() {
 		for {
+			if c.hasDone.True() {
+				return
+			}
+
 			err := c.Consume(context.Background(), c.topics, c)
 			if err != nil {
 				if errors.Is(err, sarama.ErrClosedConsumerGroup) {
@@ -128,13 +140,10 @@ func (c *consumer) Loop(handler ConsumerHandler) {
 				logx.Errorf("[SARAMA-KAFKA-ERROR]: Consume on error: %v", err)
 				panic(err.Error())
 			}
-
-			if c.hasDone.True() {
-				return
-			}
 		}
 	})
 }
+
 func (c *consumer) Release() {
 	c.done.Close()
 	c.ConsumerGroup.PauseAll()
@@ -159,24 +168,28 @@ func (c *consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim saram
 	for {
 		select {
 		case message := <-claim.Messages():
-			for _, topic := range c.topics {
-				if topic != message.Topic {
-					continue
-				}
-
-				ctx := context.Background()
-				traceId := c.getHeaderValue(mq.HeaderTraceId, message.Headers)
-				if traceId != "" {
-					traceIdFromHex, _ := oteltrace.TraceIDFromHex(traceId)
-					ctx = oteltrace.ContextWithSpanContext(ctx, oteltrace.NewSpanContext(oteltrace.SpanContextConfig{
-						TraceID: traceIdFromHex,
-					}))
-				}
-
-				_ = c.finalHook(ctx, message, func(ctx context.Context, message *sarama.ConsumerMessage) error {
-					return c.handleMessage(ctx, session, message)
-				})
+			if !slices.Contains(c.topics, message.Topic) {
+				continue
 			}
+
+			ctx := context.Background()
+			traceId := c.getHeaderValue(mq.HeaderTraceId, message.Headers)
+			if traceId != "" {
+				traceIdFromHex, _ := oteltrace.TraceIDFromHex(traceId)
+				ctx = oteltrace.ContextWithSpanContext(ctx, oteltrace.NewSpanContext(oteltrace.SpanContextConfig{
+					TraceID: traceIdFromHex,
+				}))
+			}
+
+			_ = c.finalHook(ctx, message, func(ctx context.Context, message *sarama.ConsumerMessage) error {
+				err := c.handler(ctx, message)
+				if err != nil {
+					logx.WithContext(ctx).Errorf("[SARAMA-KAFKA-ERROR]: ConsumeClaim.handleMessage on error: %v", err)
+					return err
+				}
+				session.MarkMessage(message, "")
+				return nil
+			})
 		case <-session.Context().Done():
 			// Should return when `session.Context()` is done.
 			// If not, will raise `ErrRebalanceInProgress` or `read tcp <ip>:<port>: i/o timeout` when kafka rebalance. see:
@@ -184,16 +197,6 @@ func (c *consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim saram
 			return nil
 		}
 	}
-}
-
-func (c *consumer) handleMessage(ctx context.Context, session sarama.ConsumerGroupSession, message *sarama.ConsumerMessage) error {
-	err := c.handler(ctx, message)
-	if err != nil {
-		logx.WithContext(ctx).Errorf("[SARAMA-KAFKA-ERROR]: ConsumeClaim.handleMessage on error: %v", err)
-		return err
-	}
-	session.MarkMessage(message, "")
-	return nil
 }
 
 func (c *consumer) statLag() {
