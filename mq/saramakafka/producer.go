@@ -28,7 +28,7 @@ type (
 	}
 )
 
-func NewSaramaKafkaProducer(brokers []string, opts ...Option) IProducer {
+func NewProducer(brokers []string, opts ...Option) IProducer {
 	p := &producer{
 		OptionConf: &OptionConf{
 			producerHooks: []ProducerHook{},
@@ -61,7 +61,6 @@ func NewSaramaKafkaProducer(brokers []string, opts ...Option) IProducer {
 		logx.Errorf("[SARAMA-KAFKA-ERROR]: MustNewProducer on error: %v", err)
 		panic(err)
 	}
-
 	p.SyncProducer = syncProducer
 
 	if p.tracer != nil {
