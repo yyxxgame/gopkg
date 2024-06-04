@@ -5,14 +5,12 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 
 	"github.com/duke-git/lancet/v2/convertor"
+	"github.com/yyxxgame/gopkg/cryptor/aes"
 	"github.com/yyxxgame/gopkg/infrastructure/api/pkg"
 	"github.com/yyxxgame/gopkg/infrastructure/api/pkg/request"
-
-	"github.com/yyxxgame/gopkg/cryptor/aes"
 	"github.com/yyxxgame/gopkg/xtrace"
 	"github.com/zeromicro/go-zero/core/logx"
 	"github.com/zeromicro/go-zero/rest/httpx"
@@ -72,16 +70,20 @@ func (m *Responder) Response(w http.ResponseWriter, r *http.Request, resp any, e
 			}
 		}
 	} else {
-		switch v := resp.(type) {
-		case string:
-			_, err = w.Write([]byte(v))
-		case []byte:
-			_, err = w.Write(v)
-		default:
-			httpx.OkJsonCtx(r.Context(), w, resp)
-		}
 		if err != nil {
-			_, _ = io.WriteString(w, err.Error())
+			httpx.ErrorCtx(r.Context(), w, err)
+		} else {
+			switch v := resp.(type) {
+			case string:
+				_, err = w.Write([]byte(v))
+			case []byte:
+				_, err = w.Write(v)
+			default:
+				httpx.OkJsonCtx(r.Context(), w, v)
+			}
+			if err != nil {
+				httpx.ErrorCtx(r.Context(), w, err)
+			}
 		}
 	}
 	// Log Details
