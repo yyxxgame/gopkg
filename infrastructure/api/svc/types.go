@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"github.com/yyxxgame/gopkg/infrastructure/api/pkg/responder"
-
 	"github.com/yyxxgame/gopkg/prompusher"
 	"github.com/zeromicro/go-zero/rest"
 )

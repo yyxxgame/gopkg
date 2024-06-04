@@ -7,7 +7,6 @@ import (
 	signMd5 "github.com/yyxxgame/gopkg/infrastructure/api/middleware/sign_md5"
 	"github.com/yyxxgame/gopkg/infrastructure/api/middleware/transit"
 	yyxxSvc "github.com/yyxxgame/gopkg/infrastructure/api/svc"
-
 	"github.com/zeromicro/go-zero/rest"
 )
 
