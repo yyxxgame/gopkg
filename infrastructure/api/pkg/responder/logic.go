@@ -52,7 +52,7 @@ func (m *Responder) Response(w http.ResponseWriter, r *http.Request, resp any, e
 		jsonEncoder := json.NewEncoder(bf)
 		jsonEncoder.SetEscapeHTML(false)
 		err = jsonEncoder.Encode(resp)
-		if err != nil {
+		if err != nil && resp == nil {
 			httpx.ErrorCtx(r.Context(), w, err)
 		} else {
 			reqString := string(bf.Bytes()[:bf.Len()-1]) // Remove the '\n' at the end
@@ -70,7 +70,7 @@ func (m *Responder) Response(w http.ResponseWriter, r *http.Request, resp any, e
 			}
 		}
 	} else {
-		if err != nil {
+		if err != nil && resp == nil {
 			httpx.ErrorCtx(r.Context(), w, err)
 		} else {
 			switch v := resp.(type) {
@@ -80,9 +80,6 @@ func (m *Responder) Response(w http.ResponseWriter, r *http.Request, resp any, e
 				_, err = w.Write(v)
 			default:
 				httpx.OkJsonCtx(r.Context(), w, v)
-			}
-			if err != nil {
-				httpx.ErrorCtx(r.Context(), w, err)
 			}
 		}
 	}
