@@ -2,10 +2,11 @@ package pkg
 
 import (
 	"context"
+
+	"github.com/duke-git/lancet/v2/convertor"
 )
 
 func GetIpFromContext(ctx context.Context) string {
-	k, _ := ctx.Value("__ipKey").(string)
-	v, _ := ctx.Value(k).(string)
-	return v
+	k := convertor.ToString(ctx.Value("__ipKey"))
+	return convertor.ToString(ctx.Value(k))
 }
