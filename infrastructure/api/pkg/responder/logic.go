@@ -37,8 +37,9 @@ func (m *Responder) logDetails(r *http.Request, resp any, err error) {
 	logx.WithContext(r.Context()).Info(accessLog)
 	xtrace.AddEvent(
 		r.Context(), r.URL.Path,
-		attribute.String("Request", convertor.ToString(reqParams)),
-		attribute.String("Response", convertor.ToString(resp)),
+		attribute.String("req.gmip", ip),
+		attribute.String("req.body.raw", convertor.ToString(reqParams)),
+		attribute.String("resp.body.raw", convertor.ToString(resp)),
 	)
 	if err != nil {
 		logx.WithContext(r.Context()).Errorf(accessLog + fmt.Sprintf("err:(%s)", err))

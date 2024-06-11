@@ -2,6 +2,7 @@ package transit
 
 import (
 	"bytes"
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -14,6 +15,10 @@ import (
 	"github.com/yyxxgame/gopkg/cryptor/aes"
 	"github.com/yyxxgame/gopkg/exception"
 	"github.com/yyxxgame/gopkg/infrastructure/api/pkg/responder"
+	"github.com/yyxxgame/gopkg/xtrace"
+	gozerotrace "github.com/zeromicro/go-zero/core/trace"
+	"go.opentelemetry.io/otel"
+	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
 func New(routerMap map[string]map[string]http.HandlerFunc, encryptionKey string, options ...Option) IMiddlewareInterface {
@@ -61,7 +66,10 @@ func (m *Middleware) Handle(next http.HandlerFunc) http.HandlerFunc {
 			// Redirect next
 			nextCall := m.routerMap[r.Method][fmt.Sprintf("/%s", action)]
 			if nextCall != nil && action != "" {
-				nextCall(w, r)
+				_ = xtrace.WithTraceHook(r.Context(), otel.GetTracerProvider().Tracer(gozerotrace.TraceName), oteltrace.SpanKindInternal, action, func(ctx context.Context) error {
+					nextCall(w, r)
+					return nil
+				})
 			} else {
 				next(w, r)
 			}
