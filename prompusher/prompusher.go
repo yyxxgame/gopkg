@@ -45,7 +45,8 @@ type (
 		done                         *syncx.DoneChan
 		instanceName                 string
 		enableCollectCpuUsageMetrics bool
-		enableStopWhenShutdown       bool
+		enableStopWhenShutdown       bool // Deprecated
+		enableCleanupWhenShutdown    bool
 	}
 
 	Option func(p *pusher)
@@ -62,6 +63,7 @@ func MustNewPromMetricsPusher(c PromPushConf, opts ...Option) IPromMetricsPusher
 		instanceName:                 sysx.Hostname(),
 		enableCollectCpuUsageMetrics: true,
 		enableStopWhenShutdown:       true,
+		enableCleanupWhenShutdown:    false,
 	}
 
 	for _, opt := range opts {
@@ -95,16 +97,16 @@ func (p *pusher) Start() {
 			}
 		}
 	})
-	if p.enableStopWhenShutdown {
-		proc.AddShutdownListener(func() {
-			p.Stop()
-		})
-	}
+	proc.AddShutdownListener(func() {
+		p.Stop()
+	})
 }
 
 func (p *pusher) Stop() {
 	p.done.Close()
-	_ = p.Delete()
+	if p.enableCleanupWhenShutdown {
+		_ = p.Delete()
+	}
 }
 
 // WithInstanceName set pusher instance name.
@@ -120,8 +122,17 @@ func WithCollectCpuUsageMetrics(enable bool) Option {
 	}
 }
 
+// WithStopWhenShutdown
+// Deprecated
+// use WithCleanupWhenShutdown
 func WithStopWhenShutdown(enable bool) Option {
 	return func(p *pusher) {
 		p.enableStopWhenShutdown = enable
+	}
+}
+
+func WithCleanupWhenShutdown(enable bool) Option {
+	return func(p *pusher) {
+		p.enableCleanupWhenShutdown = enable
 	}
 }
