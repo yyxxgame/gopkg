@@ -13,7 +13,7 @@ func (sel *ServiceContext) InitExtension(c ServiceConf) {
 	sel.initResponder()
 	if len(sel.Config.PromPushConf.Url) > 0 {
 		// PromMetricsPusher
-		promPusher := prompusher.MustNewPromMetricsPusher(sel.Config.PromPushConf)
+		promPusher := prompusher.MustNewPromMetricsPusher(sel.Config.PromPushConf, prompusher.WithCleanupWhenShutdown(true))
 		promPusher.Start()
 	}
 }
