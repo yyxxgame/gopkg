@@ -2,6 +2,7 @@ package elastic
 
 import (
 	"context"
+
 	v7elastic "github.com/olivere/elastic/v7"
 	"github.com/yyxxgame/gopkg/xtrace"
 	oteltrace "go.opentelemetry.io/otel/trace"
@@ -10,6 +11,7 @@ import (
 type (
 	QueryChain   func(srv *v7elastic.SearchService) *v7elastic.SearchService
 	InsertChain  func(srv *v7elastic.IndexService) *v7elastic.IndexService
+	BulkChain    func(srv *v7elastic.BulkService) *v7elastic.BulkService
 	UpsertChain  func(srv *v7elastic.UpdateService) *v7elastic.UpdateService
 	AnalyzeChain func(srv *v7elastic.IndicesAnalyzeService) *v7elastic.IndicesAnalyzeService
 
@@ -18,6 +20,8 @@ type (
 		QueryCtx(ctx context.Context, chain QueryChain) (*v7elastic.SearchResult, error)
 		Insert(chain InsertChain) (*v7elastic.IndexResponse, error)
 		InsertCtx(ctx context.Context, chain InsertChain) (*v7elastic.IndexResponse, error)
+		BulkInsert(chain BulkChain) (*v7elastic.BulkResponse, error)
+		BulkInsertCtx(ctx context.Context, chain BulkChain) (*v7elastic.BulkResponse, error)
 		Upsert(chain UpsertChain) (*v7elastic.UpdateResponse, error)
 		UpsertCtx(ctx context.Context, chain UpsertChain) (*v7elastic.UpdateResponse, error)
 		Analyze(chain AnalyzeChain) (*v7elastic.IndicesAnalyzeResponse, error)
@@ -88,6 +92,26 @@ func (c *esClient) InsertCtx(ctx context.Context, chain InsertChain) (*v7elastic
 	var resp *v7elastic.IndexResponse
 	err := xtrace.WithTraceHook(ctx, c.tracer, oteltrace.SpanKindClient, "v7elastic.Insert", func(ctx context.Context) error {
 		if ret, err := chain(v7elastic.NewIndexService(c.Client)).Pretty(true).Refresh("true").Do(ctx); err != nil {
+			return err
+		} else {
+			resp = ret
+		}
+		return nil
+	})
+	return resp, err
+}
+
+func (c *esClient) BulkInsert(chain BulkChain) (*v7elastic.BulkResponse, error) {
+	return c.BulkInsertCtx(context.Background(), chain)
+}
+
+func (c *esClient) BulkInsertCtx(ctx context.Context, chain BulkChain) (*v7elastic.BulkResponse, error) {
+	if c.tracer == nil {
+		return chain(v7elastic.NewBulkService(c.Client)).Pretty(true).Refresh("true").Do(ctx)
+	}
+	var resp *v7elastic.BulkResponse
+	err := xtrace.WithTraceHook(ctx, c.tracer, oteltrace.SpanKindClient, "v7elastic.BulkInsert", func(ctx context.Context) error {
+		if ret, err := chain(v7elastic.NewBulkService(c.Client)).Pretty(true).Refresh("true").Do(ctx); err != nil {
 			return err
 		} else {
 			resp = ret
