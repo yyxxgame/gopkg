@@ -131,7 +131,7 @@ func (cm *ConcurrentMap[K, V]) Range(iterator func(key K, value V) bool) {
 // Keys Returns a slice of all keys in the map.
 func (cm *ConcurrentMap[K, V]) Keys() []K {
 	//TODO: use go pool
-	size := cm.keySize()
+	size := cm.KeySize()
 	keys := make([]K, 0, size)
 
 	for shard := range cm.locks {
@@ -148,7 +148,7 @@ func (cm *ConcurrentMap[K, V]) Keys() []K {
 // Values Returns a slice of all keys in the map.
 func (cm *ConcurrentMap[K, V]) Values() []V {
 	//TODO: use go pool
-	size := cm.keySize()
+	size := cm.KeySize()
 	values := make([]V, 0, size)
 
 	for shard := range cm.locks {
@@ -162,7 +162,7 @@ func (cm *ConcurrentMap[K, V]) Values() []V {
 	return values
 }
 
-func (cm *ConcurrentMap[K, V]) keySize() int {
+func (cm *ConcurrentMap[K, V]) KeySize() int {
 	size := 0
 	for shard := range cm.locks {
 		cm.locks[shard].RLock()
