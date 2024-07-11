@@ -6,10 +6,11 @@ package collection
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"reflect"
 	"sync"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestConcurrentMap_Set_Get(t *testing.T) {
@@ -191,4 +192,18 @@ func TestConcurrentMap_Values(t *testing.T) {
 	expectedValues := []string{"three", "two", "one"}
 	eq := reflect.DeepEqual(values, expectedValues)
 	assert.Equal(t, true, eq)
+}
+
+func TestConcurrentMap_KeySize(t *testing.T) {
+	cm := NewConcurrentMap[int, string](100)
+
+	size := cm.KeySize()
+	assert.Equal(t, 0, size)
+
+	cm.Set(1, "one")
+	cm.Set(2, "two")
+	cm.Set(3, "three")
+
+	afterSize := cm.KeySize()
+	assert.Equal(t, 3, afterSize)
 }
