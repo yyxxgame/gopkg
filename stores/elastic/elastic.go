@@ -9,21 +9,21 @@ import (
 )
 
 type (
-	QueryChain   func(srv *v7elastic.SearchService) *v7elastic.SearchService
-	InsertChain  func(srv *v7elastic.IndexService) *v7elastic.IndexService
-	BulkChain    func(srv *v7elastic.BulkService) *v7elastic.BulkService
-	UpsertChain  func(srv *v7elastic.UpdateService) *v7elastic.UpdateService
-	AnalyzeChain func(srv *v7elastic.IndicesAnalyzeService) *v7elastic.IndicesAnalyzeService
+	QueryChain    func(srv *v7elastic.SearchService) *v7elastic.SearchService
+	InsertChain   func(srv *v7elastic.IndexService) *v7elastic.IndexService
+	UpsertChain   func(srv *v7elastic.UpdateService) *v7elastic.UpdateService
+	BulkExecChain func(srv *v7elastic.BulkService) *v7elastic.BulkService
+	AnalyzeChain  func(srv *v7elastic.IndicesAnalyzeService) *v7elastic.IndicesAnalyzeService
 
 	IEsClient interface {
 		Query(chain QueryChain) (*v7elastic.SearchResult, error)
 		QueryCtx(ctx context.Context, chain QueryChain) (*v7elastic.SearchResult, error)
 		Insert(chain InsertChain) (*v7elastic.IndexResponse, error)
 		InsertCtx(ctx context.Context, chain InsertChain) (*v7elastic.IndexResponse, error)
-		BulkInsert(chain BulkChain) (*v7elastic.BulkResponse, error)
-		BulkInsertCtx(ctx context.Context, chain BulkChain) (*v7elastic.BulkResponse, error)
 		Upsert(chain UpsertChain) (*v7elastic.UpdateResponse, error)
 		UpsertCtx(ctx context.Context, chain UpsertChain) (*v7elastic.UpdateResponse, error)
+		BulkExec(chain BulkExecChain) (*v7elastic.BulkResponse, error)
+		BulkExecCtx(ctx context.Context, chain BulkExecChain) (*v7elastic.BulkResponse, error)
 		Analyze(chain AnalyzeChain) (*v7elastic.IndicesAnalyzeResponse, error)
 		AnalyzeCtx(ctx context.Context, chain AnalyzeChain) (*v7elastic.IndicesAnalyzeResponse, error)
 	}
@@ -101,26 +101,6 @@ func (c *esClient) InsertCtx(ctx context.Context, chain InsertChain) (*v7elastic
 	return resp, err
 }
 
-func (c *esClient) BulkInsert(chain BulkChain) (*v7elastic.BulkResponse, error) {
-	return c.BulkInsertCtx(context.Background(), chain)
-}
-
-func (c *esClient) BulkInsertCtx(ctx context.Context, chain BulkChain) (*v7elastic.BulkResponse, error) {
-	if c.tracer == nil {
-		return chain(v7elastic.NewBulkService(c.Client)).Pretty(true).Refresh("true").Do(ctx)
-	}
-	var resp *v7elastic.BulkResponse
-	err := xtrace.WithTraceHook(ctx, c.tracer, oteltrace.SpanKindClient, "v7elastic.BulkInsert", func(ctx context.Context) error {
-		if ret, err := chain(v7elastic.NewBulkService(c.Client)).Pretty(true).Refresh("true").Do(ctx); err != nil {
-			return err
-		} else {
-			resp = ret
-		}
-		return nil
-	})
-	return resp, err
-}
-
 func (c *esClient) Upsert(chain UpsertChain) (*v7elastic.UpdateResponse, error) {
 	return c.UpsertCtx(context.Background(), chain)
 }
@@ -133,6 +113,26 @@ func (c *esClient) UpsertCtx(ctx context.Context, chain UpsertChain) (*v7elastic
 	var resp *v7elastic.UpdateResponse
 	err := xtrace.WithTraceHook(ctx, c.tracer, oteltrace.SpanKindClient, "v7elastic.Insert", func(ctx context.Context) error {
 		if ret, err := chain(v7elastic.NewUpdateService(c.Client)).DocAsUpsert(true).Pretty(true).Refresh("true").Do(ctx); err != nil {
+			return err
+		} else {
+			resp = ret
+		}
+		return nil
+	})
+	return resp, err
+}
+
+func (c *esClient) BulkExec(chain BulkExecChain) (*v7elastic.BulkResponse, error) {
+	return c.BulkExecCtx(context.Background(), chain)
+}
+
+func (c *esClient) BulkExecCtx(ctx context.Context, chain BulkExecChain) (*v7elastic.BulkResponse, error) {
+	if c.tracer == nil {
+		return chain(v7elastic.NewBulkService(c.Client)).Pretty(true).Refresh("true").Do(ctx)
+	}
+	var resp *v7elastic.BulkResponse
+	err := xtrace.WithTraceHook(ctx, c.tracer, oteltrace.SpanKindClient, "v7elastic.BulkExec", func(ctx context.Context) error {
+		if ret, err := chain(v7elastic.NewBulkService(c.Client)).Pretty(true).Refresh("true").Do(ctx); err != nil {
 			return err
 		} else {
 			resp = ret
