@@ -74,8 +74,13 @@ func NewConsumer(brokers, topics []string, groupId string, handler ConsumerHandl
 		config.Net.SASL.Enable = false
 	} else {
 		config.Net.SASL.Enable = true
+		config.Net.SASL.Mechanism = sarama.SASLTypePlaintext
+		config.Net.SASL.Version = sarama.SASLHandshakeV0
+		config.Net.SASL.Handshake = true
 		config.Net.SASL.User = c.username
 		config.Net.SASL.Password = c.password
+
+		config.Net.TLS.Enable = false
 	}
 
 	client, err := sarama.NewClient(brokers, config)
