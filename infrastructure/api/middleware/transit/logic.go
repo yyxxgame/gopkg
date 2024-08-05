@@ -17,6 +17,7 @@ import (
 	"github.com/yyxxgame/gopkg/infrastructure/api/pkg/responder"
 	"github.com/yyxxgame/gopkg/xtrace"
 	gozerotrace "github.com/zeromicro/go-zero/core/trace"
+	"github.com/zeromicro/go-zero/rest/handler"
 	"go.opentelemetry.io/otel"
 	oteltrace "go.opentelemetry.io/otel/trace"
 )
@@ -64,10 +65,11 @@ func (m *Middleware) Handle(next http.HandlerFunc) http.HandlerFunc {
 				r.Body = io.NopCloser(bytes.NewBuffer(jsonParamsBytes))
 			}
 			// Redirect next
-			nextCall := m.routerMap[r.Method][fmt.Sprintf("/%s", action)]
+			actionPath := fmt.Sprintf("/%s", action)
+			nextCall := m.routerMap[r.Method][actionPath]
 			if nextCall != nil && action != "" {
 				_ = xtrace.WithTraceHook(r.Context(), otel.GetTracerProvider().Tracer(gozerotrace.TraceName), oteltrace.SpanKindInternal, action, func(ctx context.Context) error {
-					nextCall(w, r)
+					handler.PrometheusHandler(actionPath)(nextCall).ServeHTTP(w, r)
 					return nil
 				})
 			} else {
