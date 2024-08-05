@@ -69,7 +69,7 @@ func (m *Middleware) Handle(next http.HandlerFunc) http.HandlerFunc {
 			nextCall := m.routerMap[r.Method][actionPath]
 			if nextCall != nil && action != "" {
 				_ = xtrace.WithTraceHook(r.Context(), otel.GetTracerProvider().Tracer(gozerotrace.TraceName), oteltrace.SpanKindInternal, action, func(ctx context.Context) error {
-					handler.PrometheusHandler(actionPath)(nextCall).ServeHTTP(w, r)
+					handler.PrometheusHandler(actionPath, r.Method)(nextCall).ServeHTTP(w, r)
 					return nil
 				})
 			} else {
