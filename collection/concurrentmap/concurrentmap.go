@@ -1,8 +1,8 @@
-//@File     concurrent_map.go
+//@File     concurrentmap.go
 //@Time     2024/03/19
 //@Author   #Suyghur,
 
-package collection
+package concurrentmap
 
 import (
 	"fmt"

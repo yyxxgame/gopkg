@@ -92,23 +92,21 @@ func NewConsumer(brokers, topics []string, groupId string, handler ConsumerHandl
 
 	consumerGroup, err := sarama.NewConsumerGroupFromClient(groupId, c.Client)
 	if err != nil {
-		logx.Errorf("[SARAMA-KAFKA-ERROR]: NewConsumerWithClient on error: %v", err)
 		panic(err)
 	}
 	c.ConsumerGroup = consumerGroup
 
 	clusterAdmin, err := sarama.NewClusterAdminFromClient(c.Client)
 	if err != nil {
-		logx.Errorf("[SARAMA-KAFKA-ERROR]: NewConsumerWithClient on error: %v", err)
 		panic(err)
 	}
 	c.ClusterAdmin = clusterAdmin
 
 	if c.tracer != nil {
-		c.hooks = append(c.hooks, newConsumerTraceHook(c.tracer).Handle)
+		c.hooks = append(c.hooks, consumerTraceHook(c.tracer))
 	}
 
-	c.hooks = append(c.hooks, newConsumerDurationHook(groupId).Handle)
+	c.hooks = append(c.hooks, consumerDurationHook(groupId))
 
 	c.hooks = append(c.hooks, c.consumerHooks...)
 
@@ -142,7 +140,6 @@ func (c *consumer) Loop() {
 				if errors.Is(err, sarama.ErrClosedConsumerGroup) {
 					return
 				}
-				logx.Errorf("[SARAMA-KAFKA-ERROR]: Consume on error: %v", err)
 				panic(err.Error())
 			}
 		}
@@ -189,7 +186,6 @@ func (c *consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim saram
 			_ = c.finalHook(ctx, message, func(ctx context.Context, message *sarama.ConsumerMessage) error {
 				err := c.handler(ctx, message)
 				if err != nil {
-					logx.WithContext(ctx).Errorf("[SARAMA-KAFKA-ERROR]: ConsumeClaim.handleMessage on error: %v", err)
 					return err
 				}
 				session.MarkMessage(message, "")

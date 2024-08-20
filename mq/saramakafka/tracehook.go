@@ -22,49 +22,32 @@ var (
 	attributePayload = attribute.Key("saramakafka.payload")
 )
 
-type (
-	producerTraceHook struct {
-		tracer oteltrace.Tracer
-	}
-	consumerTraceHook struct {
-		tracer oteltrace.Tracer
-	}
-)
+func producerTraceHook(tracer oteltrace.Tracer) ProducerHook {
+	return func(ctx context.Context, message *sarama.ProducerMessage, next ProducerHookFunc) error {
+		bKey, _ := message.Key.Encode()
+		key := string(bKey)
 
-func newProducerTraceHook(tracer oteltrace.Tracer) *producerTraceHook {
-	return &producerTraceHook{
-		tracer: tracer,
-	}
-}
+		bPayload, _ := message.Key.Encode()
+		payload := string(bPayload)
 
-func (c *producerTraceHook) Handle(ctx context.Context, message *sarama.ProducerMessage, next ProducerHookFunc) error {
-	bKey, _ := message.Key.Encode()
-	key := string(bKey)
+		name := fmt.Sprintf("%s.%s", spanName, oteltrace.SpanKindProducer.String())
 
-	bPayload, _ := message.Key.Encode()
-	payload := string(bPayload)
-
-	name := fmt.Sprintf("%s.%s", spanName, oteltrace.SpanKindProducer.String())
-
-	return xtrace.WithTraceHook(ctx, c.tracer, oteltrace.SpanKindProducer, name, func(ctx context.Context) error {
-		return next(ctx, message)
-	}, attributeTopic.String(message.Topic), attributeKey.String(key), attributePayload.String(payload))
-}
-
-func newConsumerTraceHook(tracer oteltrace.Tracer) *consumerTraceHook {
-	return &consumerTraceHook{
-		tracer: tracer,
+		return xtrace.WithTraceHook(ctx, tracer, oteltrace.SpanKindProducer, name, func(ctx context.Context) error {
+			return next(ctx, message)
+		}, attributeTopic.String(message.Topic), attributeKey.String(key), attributePayload.String(payload))
 	}
 }
 
-func (c *consumerTraceHook) Handle(ctx context.Context, message *sarama.ConsumerMessage, next ConsumerHookFunc) error {
-	key := string(message.Key)
+func consumerTraceHook(tracer oteltrace.Tracer) ConsumerHook {
+	return func(ctx context.Context, message *sarama.ConsumerMessage, next ConsumerHookFunc) error {
+		key := string(message.Key)
 
-	payload := string(message.Value)
+		payload := string(message.Value)
 
-	name := fmt.Sprintf("%s.%s", spanName, oteltrace.SpanKindConsumer.String())
+		name := fmt.Sprintf("%s.%s", spanName, oteltrace.SpanKindConsumer.String())
 
-	return xtrace.WithTraceHook(ctx, c.tracer, oteltrace.SpanKindConsumer, name, func(ctx context.Context) error {
-		return next(ctx, message)
-	}, attributeTopic.String(message.Topic), attributeKey.String(key), attributePayload.String(payload))
+		return xtrace.WithTraceHook(ctx, tracer, oteltrace.SpanKindConsumer, name, func(ctx context.Context) error {
+			return next(ctx, message)
+		}, attributeTopic.String(message.Topic), attributeKey.String(key), attributePayload.String(payload))
+	}
 }
