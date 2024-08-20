@@ -11,54 +11,40 @@ import (
 	"github.com/zeromicro/go-zero/core/timex"
 )
 
-type producerDurationHook struct {
-}
+func producerDurationHook() ProducerHook {
+	return func(ctx context.Context, message *sarama.ProducerMessage, next ProducerHookFunc) error {
+		topic := message.Topic
 
-type consumerDurationHook struct {
-	groupId string
-}
+		start := timex.Now()
 
-func newProducerDurationHook() *producerDurationHook {
-	return &producerDurationHook{}
-}
+		err := next(ctx, message)
 
-func (c *producerDurationHook) Handle(ctx context.Context, message *sarama.ProducerMessage, next ProducerHookFunc) error {
-	topic := message.Topic
+		duration := timex.Since(start)
 
-	start := timex.Now()
+		metricProduceDur.Observe(duration.Milliseconds(), topic)
+		if err != nil {
+			metricProduceErr.Inc(topic)
+		}
 
-	err := next(ctx, message)
-
-	duration := timex.Since(start)
-
-	metricProduceDur.Observe(duration.Milliseconds(), topic)
-	if err != nil {
-		metricProduceErr.Inc(topic)
+		return err
 	}
-
-	return err
 }
 
-func newConsumerDurationHook(groupId string) *consumerDurationHook {
-	return &consumerDurationHook{
-		groupId: groupId,
+func consumerDurationHook(groupId string) ConsumerHook {
+	return func(ctx context.Context, message *sarama.ConsumerMessage, next ConsumerHookFunc) error {
+		topic := message.Topic
+
+		start := timex.Now()
+
+		err := next(ctx, message)
+
+		duration := timex.Since(start)
+
+		metricConsumeDur.Observe(duration.Milliseconds(), topic, groupId)
+		if err != nil {
+			metricConsumeErr.Inc(topic, groupId)
+		}
+
+		return err
 	}
-
-}
-
-func (c *consumerDurationHook) Handle(ctx context.Context, message *sarama.ConsumerMessage, next ConsumerHookFunc) error {
-	topic := message.Topic
-
-	start := timex.Now()
-
-	err := next(ctx, message)
-
-	duration := timex.Since(start)
-
-	metricConsumeDur.Observe(duration.Milliseconds(), topic, c.groupId)
-	if err != nil {
-		metricConsumeErr.Inc(topic, c.groupId)
-	}
-
-	return err
 }

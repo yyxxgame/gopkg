@@ -10,7 +10,6 @@ import (
 	"github.com/IBM/sarama"
 	"github.com/yyxxgame/gopkg/mq"
 	"github.com/yyxxgame/gopkg/xtrace"
-	"github.com/zeromicro/go-zero/core/logx"
 )
 
 type (
@@ -63,16 +62,16 @@ func NewProducer(brokers []string, opts ...Option) IProducer {
 
 	syncProducer, err := sarama.NewSyncProducer(brokers, config)
 	if err != nil {
-		logx.Errorf("[SARAMA-KAFKA-ERROR]: MustNewProducer on error: %v", err)
 		panic(err)
 	}
+
 	p.SyncProducer = syncProducer
 
 	if p.tracer != nil {
-		p.hooks = append(p.hooks, newProducerTraceHook(p.tracer).Handle)
+		p.hooks = append(p.hooks, producerTraceHook(p.tracer))
 	}
 
-	p.hooks = append(p.hooks, newProducerDurationHook().Handle)
+	p.hooks = append(p.hooks, producerDurationHook())
 
 	p.hooks = append(p.hooks, p.producerHooks...)
 
@@ -99,18 +98,16 @@ func (p *producer) PublishCtx(ctx context.Context, topic, key, payload string) e
 	}
 
 	return p.finalHook(ctx, message, func(ctx context.Context, message *sarama.ProducerMessage) error {
-		return p.produce(ctx, message)
+		return p.produce(message)
 	})
 }
 
-func (p *producer) produce(ctx context.Context, message *sarama.ProducerMessage) error {
-	partition, offset, err := p.SendMessage(message)
+func (p *producer) produce(message *sarama.ProducerMessage) error {
+	_, _, err := p.SendMessage(message)
 	if err != nil {
-		logx.WithContext(ctx).Errorf("[SARAMA-KAFKA-ERROR]: publishMessage.SendMessage to topic: %s, on error: %v", message.Topic, err)
 		return err
 	}
 
-	logx.WithContext(ctx).Infof("[SARAMA-KAFKA]: publishMessage.SendMessage to topic: %s, on success, partition: %d, offset: %v", message.Topic, partition, offset)
 	return nil
 }
 
