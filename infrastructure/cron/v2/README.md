@@ -58,6 +58,7 @@ import (
 	"github.com/zeromicro/go-zero/core/conf"
 	"github.com/zeromicro/go-zero/core/service"
 	"github.com/zeromicro/go-zero/rest"
+	cronv2"github.com/yyxxgame/gopkg/infrastructure/cron/v2"
 )
 
 var configFile = flag.String("f", "etc/cron.yaml", "the config file")
@@ -77,7 +78,7 @@ func main() {
 	handler.RegisterHandlers(apiServer, ctx)
 	group.Add(apiServer)
 
-	cronTaskController := pkgcron.NewCronTaskController(c.CronTaskConf)
+	cronTaskController := cronv2.NewCronTaskController(c.CronTaskConf)
 	// 注册你的任务
 	cronTaskController.RegisterJobs(
 		job.NewTempJob(ctx),

@@ -2,7 +2,7 @@
 //@Time     2024/8/13
 //@Author   #Suyghur,
 
-package cron
+package v2
 
 import (
 	"context"

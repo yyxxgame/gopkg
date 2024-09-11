@@ -13,7 +13,7 @@ var (
 		Namespace: namespace,
 		Subsystem: "exec_jobs",
 		Name:      "duration_ms",
-		Help:      "cron task controller exec jobs duration(ms).",
+		Help:      "cron task controller exec job duration(ms).",
 		Labels:    []string{"cron_job_name"},
 		Buckets:   []float64{100, 250, 500, 1000, 2000, 5000, 10000, 15000, 20000, 30000, 60000},
 	})
@@ -21,7 +21,7 @@ var (
 		Namespace: namespace,
 		Subsystem: "exec_jobs",
 		Name:      "error_total",
-		Help:      "cron task controller exec jobs error count.",
+		Help:      "cron task controller exec job error count.",
 		Labels:    []string{"cron_job_name"},
 	})
 )
