@@ -48,14 +48,14 @@ func WithDisableStatLag() Option {
 	}
 }
 
-func WithProducerHook(hook ProducerHook) Option {
+func WithProducerHook(hooks ...ProducerHook) Option {
 	return func(c *OptionConf) {
-		c.producerHooks = append(c.producerHooks, hook)
+		c.producerHooks = append(c.producerHooks, hooks...)
 	}
 }
 
-func WithConsumerHook(hook ConsumerHook) Option {
+func WithConsumerHook(hooks ...ConsumerHook) Option {
 	return func(c *OptionConf) {
-		c.consumerHooks = append(c.consumerHooks, hook)
+		c.consumerHooks = append(c.consumerHooks, hooks...)
 	}
 }
