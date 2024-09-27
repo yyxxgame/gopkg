@@ -44,7 +44,10 @@ func EncryptCbcPkcs7(encodeToStringFunc func([]byte) string, data string, key st
 }
 
 func DecryptCbcPkcs7(decodeStringFunc func(string) ([]byte, error), data string, key string) (string, error) {
-	if raw, err := decodeStringFunc(data); err != nil {
+	if raw, err := decodeStringFunc(data); err != nil || len(raw) == 0 {
+		if err == nil {
+			err = errors.New("data string cannot be null")
+		}
 		return "", err
 	} else {
 		res, err := CbcPkcs7Decrypter(raw, []byte(key))
