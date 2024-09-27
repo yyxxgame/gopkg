@@ -78,9 +78,24 @@ func (c *controller) RegisterJobs(jobs ...IQueueJob) {
 			}
 
 			if c.tracer == nil {
-				wrapper.consumer = saramakafka.NewConsumer(c.conf.Brokers, []string{item.Topic}, item.Name, wrapper.Consume, saramakafka.WithConsumerHook(c.hooks...))
+				wrapper.consumer = saramakafka.NewConsumer(
+					c.conf.Brokers,
+					[]string{item.Topic},
+					item.Name,
+					wrapper.Consume,
+					saramakafka.WithSaslPlaintext(c.conf.Username, c.conf.Password),
+					saramakafka.WithConsumerHook(c.hooks...),
+				)
 			} else {
-				wrapper.consumer = saramakafka.NewConsumer(c.conf.Brokers, []string{item.Topic}, item.Name, wrapper.Consume, saramakafka.WithTracer(c.tracer), saramakafka.WithConsumerHook(c.hooks...))
+				wrapper.consumer = saramakafka.NewConsumer(
+					c.conf.Brokers,
+					[]string{item.Topic},
+					item.Name,
+					wrapper.Consume,
+					saramakafka.WithSaslPlaintext(c.conf.Username, c.conf.Password),
+					saramakafka.WithTracer(c.tracer),
+					saramakafka.WithConsumerHook(c.hooks...),
+				)
 			}
 			wrapper.Loop()
 

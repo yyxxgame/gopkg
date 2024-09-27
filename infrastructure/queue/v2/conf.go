@@ -6,8 +6,10 @@ package v2
 
 type (
 	QueueTaskConf struct {
-		Brokers []string
-		Jobs    []QueueJobConf
+		Brokers  []string
+		Username string `json:",optional"`
+		Password string `json:",optional"`
+		Jobs     []QueueJobConf
 	}
 
 	QueueJobConf struct {
