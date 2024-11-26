@@ -222,12 +222,22 @@ func (c *consumer) statLag() {
 			return
 		}
 		for _, partition := range partitions {
-			latestOffset, _ := c.GetOffset(topic, partition, sarama.OffsetNewest)
-			offset := consumerGroupOffsets.Blocks[topic][partition].Offset
-			lag := latestOffset - offset
+			latestOffset, _ := c.Client.GetOffset(topic, partition, sarama.OffsetNewest)
+			offset := consumerGroupOffsets.GetBlock(topic, partition).Offset
+			var lag int64
+			if offset > 0 && latestOffset > offset {
+				// 有消费进度且分区最新偏移量大于当前消费偏移量，计算积压数量
+				lag = latestOffset - offset
+			} else {
+				// 还没消费进度或者最新偏移量小于消费偏移量，认为没有积压
+				lag = 0
+			}
+
 			total += lag
+
 			metricLag.Set(float64(lag), topic, c.groupId, strconv.FormatInt(int64(partition), 10))
 		}
+
 		metricLagSum.Set(float64(total), topic, c.groupId)
 	})
 }
