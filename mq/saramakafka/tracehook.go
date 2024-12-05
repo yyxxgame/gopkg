@@ -27,7 +27,7 @@ func producerTraceHook(tracer oteltrace.Tracer) ProducerHook {
 		bKey, _ := message.Key.Encode()
 		key := string(bKey)
 
-		bPayload, _ := message.Key.Encode()
+		bPayload, _ := message.Value.Encode()
 		payload := string(bPayload)
 
 		name := fmt.Sprintf("%s.%s", spanName, oteltrace.SpanKindProducer.String())
