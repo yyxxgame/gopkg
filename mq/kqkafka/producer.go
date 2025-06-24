@@ -6,13 +6,14 @@ package kqkafka
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
+	"sync"
+
+	"github.com/bytedance/sonic"
 	"github.com/yyxxgame/gopkg/xtrace"
 	"github.com/zeromicro/go-queue/kq"
 	"github.com/zeromicro/go-zero/core/logx"
 	"go.opentelemetry.io/otel/attribute"
-	"sync"
 )
 
 type (
@@ -53,6 +54,6 @@ func (sel *Producer) Publish(ctx context.Context, topic, v string) error {
 	)
 	defer span.End()
 	mqMsg.Body = v
-	msg, _ := json.Marshal(mqMsg)
-	return sel.GetPusher(topic).Push(string(msg))
+	payload, _ := sonic.MarshalString(mqMsg)
+	return sel.GetPusher(topic).Push(ctx, payload)
 }

@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/thinkeridea/go-extend/exnet"
+	"github.com/duke-git/lancet/v2/netutil"
 )
 
 func New(ipKey string) IMiddlewareInterface {
@@ -16,12 +16,12 @@ func New(ipKey string) IMiddlewareInterface {
 func (m *Middleware) Handle(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Set real ip to context with the specified name
-		ip := exnet.ClientPublicIP(r)
-		if ip == "" {
-			ip = exnet.ClientIP(r)
+		ip := netutil.GetRequestPublicIp(r)
+		if ip == "::1" {
+			ip = "127.0.0.1"
 		}
 		ctx := context.WithValue(r.Context(), "__ipKey", m.ipKey) // nolint
-		ctx = context.WithValue(ctx, m.ipKey, ip)                 // nolint
+		ctx = context.WithValue(ctx, m.ipKey, ip)
 		next(w, r.WithContext(ctx))
 	}
 }

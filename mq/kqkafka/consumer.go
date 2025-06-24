@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
 	"github.com/yyxxgame/gopkg/syncx/gopool"
 	"github.com/yyxxgame/gopkg/xtrace"
 	"github.com/zeromicro/go-queue/kq"
@@ -33,10 +34,9 @@ type (
 func NewConsumer(conf kq.KqConf, handler RunHandle) ConsumerInst {
 	return &Consumer{
 		conf: conf,
-		handler: func(k, v string) error {
+		handler: func(ctx context.Context, k, v string) error {
 			var mqMsg xtrace.MqMsg
 			_ = json.Unmarshal([]byte(v), &mqMsg)
-			ctx := context.Background()
 			span := xtrace.StartMqConsumerTrace(
 				ctx, fmt.Sprintf("%s.%s", conf.Group, conf.Topic), &mqMsg,
 				attribute.String("topic", conf.Topic),
