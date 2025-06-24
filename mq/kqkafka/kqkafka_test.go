@@ -7,10 +7,11 @@ package kqkafka
 import (
 	"context"
 	"fmt"
-	"github.com/zeromicro/go-queue/kq"
-	"github.com/zeromicro/go-zero/core/service"
 	"testing"
 	"time"
+
+	"github.com/zeromicro/go-queue/kq"
+	"github.com/zeromicro/go-zero/core/service"
 )
 
 var (

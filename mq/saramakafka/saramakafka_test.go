@@ -6,6 +6,7 @@ package saramakafka
 
 import (
 	"context"
+	"sync/atomic"
 	"testing"
 
 	"github.com/IBM/sarama"
@@ -14,7 +15,6 @@ import (
 	"github.com/zeromicro/go-zero/core/proc"
 	"github.com/zeromicro/go-zero/core/stringx"
 	"github.com/zeromicro/go-zero/core/syncx"
-	"go.uber.org/atomic"
 )
 
 var (
@@ -39,15 +39,18 @@ func TestSaramaKafkaProducer(t *testing.T) {
 
 func TestSaramaKafkaConsumer(t *testing.T) {
 	done := syncx.NewDoneChan()
-	onFakeHookCount := atomic.NewInt64(0)
-	onMessageCount := atomic.NewInt64(0)
+	var (
+		onFakeHookCount uint32
+		onMessageCount  uint32
+	)
+
 	fakeConsumerHook := func(ctx context.Context, message *sarama.ConsumerMessage, next ConsumerHookFunc) error {
-		onFakeHookCount.Inc()
+		atomic.AddUint32(&onFakeHookCount, 1)
 		return next(ctx, message)
 	}
 	handler := func(ctx context.Context, message *sarama.ConsumerMessage) error {
 		logx.Infof("handle message, partition: %d, offset: %d, key: %s, value: %s", message.Partition, message.Offset, message.Key, message.Value)
-		onMessageCount.Inc()
+		atomic.AddUint32(&onMessageCount, 1)
 		return nil
 	}
 
@@ -61,5 +64,5 @@ func TestSaramaKafkaConsumer(t *testing.T) {
 
 	<-done.Done()
 
-	assert.Equal(t, onFakeHookCount.Load(), onMessageCount.Load())
+	assert.Equal(t, onFakeHookCount, onMessageCount)
 }

@@ -6,9 +6,10 @@ package eventbus
 
 import (
 	"context"
-	"github.com/yyxxgame/gopkg/syncx/gopool"
 	"reflect"
 	"sync"
+
+	"github.com/yyxxgame/gopkg/syncx/gopool"
 )
 
 type (
