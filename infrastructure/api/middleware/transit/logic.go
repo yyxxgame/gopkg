@@ -49,10 +49,10 @@ func (m *Middleware) Handle(next http.HandlerFunc) http.HandlerFunc {
 			// Decrypt Body
 			aesBodyString, err := aes.DecryptCbcPkcs7(hex.DecodeString, string(bodyBytes), m.encryptionKey)
 			if err != nil {
-				m.responder.Response(w, r, map[string]interface{}{"code": -3, "msg": "transit error"}, nil)
+				m.responder.Response(w, r, map[string]any{"code": -3, "msg": "transit error"}, nil)
 				return
 			}
-			jsonParams := make(map[string]interface{})
+			jsonParams := make(map[string]any)
 			_ = sonic.UnmarshalString(aesBodyString[m.prevWidths:], &jsonParams)
 			var action string
 			if maputil.HasKey(jsonParams, "action") {
