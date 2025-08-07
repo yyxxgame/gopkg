@@ -4,12 +4,14 @@ go 1.24
 
 require (
 	github.com/IBM/sarama v1.45.2
+	github.com/alicebob/miniredis/v2 v2.35.0
 	github.com/bytedance/sonic v1.14.0
 	github.com/duke-git/lancet/v2 v2.3.7
 	github.com/golang/mock v1.6.0
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/olivere/elastic/v7 v7.0.32
 	github.com/prometheus/client_golang v1.23.0
+	github.com/redis/go-redis/v9 v9.12.0
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/stretchr/testify v1.10.0
 	github.com/zeromicro/go-queue v1.2.2
@@ -29,6 +31,7 @@ require (
 	github.com/coreos/go-semver v0.3.1 // indirect
 	github.com/coreos/go-systemd/v22 v22.5.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/eapache/go-resiliency v1.7.0 // indirect
 	github.com/eapache/go-xerial-snappy v0.0.0-20230731223053-c322873962e3 // indirect
 	github.com/eapache/queue v1.1.0 // indirect
@@ -70,6 +73,7 @@ require (
 	github.com/segmentio/kafka-go v0.4.47 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
+	github.com/yuin/gopher-lua v1.1.1 // indirect
 	go.etcd.io/etcd/api/v3 v3.5.15 // indirect
 	go.etcd.io/etcd/client/pkg/v3 v3.5.15 // indirect
 	go.opentelemetry.io/otel/exporters/jaeger v1.17.0 // indirect
