@@ -1,4 +1,4 @@
-//@File     bloom.go
+//@File     bloom_filter.go
 //@Time     2025/5/29
 //@Author   #Suyghur,
 
@@ -39,8 +39,8 @@ type (
 		Exists(data []byte) (bool, error)
 		ExistsCtx(ctx context.Context, data []byte) (bool, error)
 	}
-	// A redisBloomFilter is a bloom redisBloomFilter.
-	redisBloomFilter struct {
+	// A bloomFilter is a bloom bloomFilter.
+	bloomFilter struct {
 		bits   uint
 		bitSet bitSetProvider
 	}
@@ -57,37 +57,37 @@ type (
 	}
 )
 
-// NewBloomFilter create a redisBloomFilter, store is the backed redis, key is the key for the bloom redisBloomFilter,
+// NewBloomFilter create a bloomFilter, store is the backed redis, key is the key for the bloom bloomFilter,
 // bits is how many bits will be used, maps is how many hashes for each addition.
 // best practices:
 // elements - means how many actual elements
 // when maps = 14, formula: 0.7*(bits/maps), bits = 20*elements, the error rate is 0.000067 < 1e-4
 // for detailed error rate table, see http://pages.cs.wisc.edu/~cao/papers/summary-cache/node8.html
 func NewBloomFilter(rds *Redis, key string, bits uint) IBloomFilter {
-	return &redisBloomFilter{
+	return &bloomFilter{
 		bits:   bits,
 		bitSet: newBitset(rds, key, bits),
 	}
 }
 
 // Add adds data into f.
-func (f *redisBloomFilter) Add(data []byte) error {
+func (f *bloomFilter) Add(data []byte) error {
 	return f.AddCtx(context.Background(), data)
 }
 
 // AddCtx adds data into f with context.
-func (f *redisBloomFilter) AddCtx(ctx context.Context, data []byte) error {
+func (f *bloomFilter) AddCtx(ctx context.Context, data []byte) error {
 	locations := f.getLocations(data)
 	return f.bitSet.set(ctx, locations)
 }
 
 // Exists checks if data is in f.
-func (f *redisBloomFilter) Exists(data []byte) (bool, error) {
+func (f *bloomFilter) Exists(data []byte) (bool, error) {
 	return f.ExistsCtx(context.Background(), data)
 }
 
 // ExistsCtx checks if data is in f with context.
-func (f *redisBloomFilter) ExistsCtx(ctx context.Context, data []byte) (bool, error) {
+func (f *bloomFilter) ExistsCtx(ctx context.Context, data []byte) (bool, error) {
 	locations := f.getLocations(data)
 	isSet, err := f.bitSet.check(ctx, locations)
 	if err != nil {
@@ -97,7 +97,7 @@ func (f *redisBloomFilter) ExistsCtx(ctx context.Context, data []byte) (bool, er
 	return isSet, nil
 }
 
-func (f *redisBloomFilter) getLocations(data []byte) []uint {
+func (f *bloomFilter) getLocations(data []byte) []uint {
 	locations := make([]uint, maps)
 	for i := uint(0); i < maps; i++ {
 		hashValue := hash.Hash(append(data, byte(i)))
