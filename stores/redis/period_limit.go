@@ -8,11 +8,11 @@ import (
 	"context"
 	_ "embed"
 	"errors"
+	"fmt"
 	"strconv"
 	"time"
 
 	v9rds "github.com/redis/go-redis/v9"
-	"github.com/zeromicro/go-zero/core/stores/redis"
 )
 
 const (
@@ -47,14 +47,14 @@ type (
 	PeriodLimit struct {
 		period     int
 		quota      int
-		limitStore *redis.Redis
+		limitStore *Redis
 		keyPrefix  string
 		align      bool
 	}
 )
 
 // NewPeriodLimit returns a PeriodLimit with given parameters.
-func NewPeriodLimit(period, quota int, limitStore *redis.Redis, keyPrefix string, opts ...PeriodOption) *PeriodLimit {
+func NewPeriodLimit(period, quota int, limitStore *Redis, keyPrefix string, opts ...PeriodOption) *PeriodLimit {
 	limiter := &PeriodLimit{
 		period:     period,
 		quota:      quota,
@@ -76,10 +76,10 @@ func (p *PeriodLimit) Take(key string) (int, error) {
 
 // TakeCtx requests a permit with context, it returns the permit state.
 func (p *PeriodLimit) TakeCtx(ctx context.Context, key string) (int, error) {
-	resp, err := p.limitStore.ScriptRunCtx(ctx, periodScript, []string{p.keyPrefix + key}, []string{
-		strconv.Itoa(p.quota),
-		strconv.Itoa(p.calcExpireSeconds()),
-	})
+	resp, err := periodScript.Run(ctx, p.limitStore,
+		[]string{fmt.Sprintf("%s%s", p.keyPrefix, key)},
+		[]string{strconv.Itoa(p.quota), strconv.Itoa(p.calcExpireSeconds())},
+	).Result()
 	if err != nil {
 		return Unknown, err
 	}
