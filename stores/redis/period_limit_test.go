@@ -7,10 +7,7 @@ package redis
 import (
 	"testing"
 
-	"github.com/alicebob/miniredis/v2"
 	"github.com/stretchr/testify/assert"
-	"github.com/zeromicro/go-zero/core/stores/redis"
-	"github.com/zeromicro/go-zero/core/stores/redis/redistest"
 )
 
 func TestPeriodLimit_Take(t *testing.T) {
@@ -22,22 +19,20 @@ func TestPeriodLimit_TakeWithAlign(t *testing.T) {
 }
 
 func TestPeriodLimit_RedisUnavailable(t *testing.T) {
-	s, err := miniredis.Run()
-	assert.Nil(t, err)
-
+	store := CreateRedis(t)
 	const (
 		seconds = 1
 		quota   = 5
 	)
-	l := NewPeriodLimit(seconds, quota, redis.New(s.Addr()), "periodlimit")
-	s.Close()
+	l := NewPeriodLimit(seconds, quota, store, "periodlimit")
+	store.Close()
 	val, err := l.Take("first")
 	assert.NotNil(t, err)
 	assert.Equal(t, 0, val)
 }
 
 func testPeriodLimit(t *testing.T, opts ...PeriodOption) {
-	store := redistest.CreateRedis(t)
+	store := CreateRedis(t)
 
 	const (
 		seconds = 1
@@ -69,10 +64,9 @@ func testPeriodLimit(t *testing.T, opts ...PeriodOption) {
 }
 
 func TestQuotaFull(t *testing.T) {
-	s, err := miniredis.Run()
-	assert.Nil(t, err)
+	store := CreateRedis(t)
 
-	l := NewPeriodLimit(1, 1, redis.New(s.Addr()), "periodlimit")
+	l := NewPeriodLimit(1, 1, store, "periodlimit")
 	val, err := l.Take("first")
 	assert.Nil(t, err)
 	assert.Equal(t, HitQuota, val)
