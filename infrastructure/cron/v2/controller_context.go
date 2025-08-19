@@ -5,8 +5,6 @@
 package v2
 
 import (
-	"context"
-
 	"github.com/robfig/cron/v3"
 	"github.com/yyxxgame/gopkg/infrastructure/cron/v2/internal"
 	"github.com/zeromicro/go-zero/core/logx"
@@ -20,17 +18,12 @@ type (
 		RegisterJobs(jobs ...ICronJob)
 	}
 
-	ICronJob interface {
-		OnExec(ctx context.Context, params map[string]any) error
-		Named() string
-	}
-
 	controller struct {
 		conf     CronTaskConf
 		cron     *cron.Cron
 		tracer   oteltrace.Tracer
 		handlers map[string]*WrapperJob
-		hooks    []internal.Hook
+		hooks    []Hook
 	}
 )
 
@@ -45,15 +38,12 @@ func NewCronTaskController(conf CronTaskConf, opts ...Option) ICronTaskControlle
 			),
 		),
 		handlers: make(map[string]*WrapperJob),
-		hooks:    []internal.Hook{},
+		hooks:    []Hook{},
 	}
 
 	for _, opt := range opts {
 		opt(c)
 	}
-	//
-
-	//c.hooks = append(c.hooks, internal.DurationHook)
 
 	return c
 }
@@ -82,17 +72,15 @@ func (c *controller) RegisterJobs(jobs ...ICronJob) {
 				continue
 			}
 
-			var wrapperHooks []internal.Hook
-			if c.tracer != nil {
-				wrapperHooks = append(wrapperHooks, internal.TracerHook(c.tracer, item.Name))
+			wrapperHooks := []Hook{
+				NewDurationHook(c.tracer).ExecHook(),
 			}
-
-			wrapperHooks = append(wrapperHooks, internal.DurationHook(item.Name))
+			wrapperHooks = append(wrapperHooks, c.hooks...)
 
 			wrapper := &WrapperJob{
 				cronJob:   job,
 				params:    item.Params,
-				finalHook: internal.ChainHooks(wrapperHooks...),
+				finalHook: chainHooks(wrapperHooks...),
 			}
 
 			_, err := c.cron.AddJob(item.Expression, wrapper)

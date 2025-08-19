@@ -24,4 +24,11 @@ var (
 		Help:      "cron task controller exec job error count.",
 		Labels:    []string{"cron_job_name"},
 	})
+	MetricExecJobsLastTimestamp = metric.NewGaugeVec(&metric.GaugeVecOpts{
+		Namespace: namespace,
+		Subsystem: "exec_jobs",
+		Name:      "last_timestamp",
+		Help:      "cron task controller exec job last timestamp.",
+		Labels:    []string{"cron_job_name"},
+	})
 )

@@ -6,9 +6,7 @@ package v2
 
 type (
 	CronTaskConf struct {
-		DurationInterceptor bool          `json:",optional,default=true"`
-		TraceInterceptor    bool          `json:",optional,default=true"`
-		Jobs                []CronJobConf `json:",optional"`
+		Jobs []CronJobConf `json:",optional"`
 	}
 
 	CronJobConf struct {
