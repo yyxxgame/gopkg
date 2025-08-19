@@ -5,8 +5,6 @@
 package v2
 
 import (
-	"context"
-
 	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
@@ -20,7 +18,7 @@ func WithTracer(tracer oteltrace.Tracer) Option {
 	}
 }
 
-func WithHook(hook func(ctx context.Context, next func(ctx context.Context) error) error) Option {
+func WithHook(hook Hook) Option {
 	return func(c *controller) {
 		c.hooks = append(c.hooks, hook)
 	}

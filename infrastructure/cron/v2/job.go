@@ -6,27 +6,25 @@ package v2
 
 import (
 	"context"
-
-	"github.com/yyxxgame/gopkg/infrastructure/cron/v2/internal"
 )
 
 type (
+	ICronJob interface {
+		OnExec(ctx context.Context, params map[string]any) error
+		Named() string
+	}
+
 	WrapperJob struct {
 		cronJob   ICronJob
 		params    map[string]any
-		finalHook internal.Hook
+		finalHook Hook
 	}
 )
 
 func (job *WrapperJob) Run() {
 	ctx := context.Background()
 
-	_ = job.finalHook(ctx, func(ctx context.Context) error {
-		err := job.cronJob.OnExec(ctx, job.params)
-		if err != nil {
-			internal.MetricExecJobsErr.Inc(job.cronJob.Named())
-		}
-
-		return err
+	_ = job.finalHook(ctx, job.cronJob, func(ctx context.Context, j ICronJob) error {
+		return j.OnExec(ctx, job.params)
 	})
 }
