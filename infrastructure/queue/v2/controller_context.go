@@ -6,9 +6,9 @@ package v2
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/yyxxgame/gopkg/mq/saramakafka"
-	"github.com/zeromicro/go-zero/core/logx"
 	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
@@ -27,7 +27,7 @@ type (
 	controller struct {
 		conf   QueueTaskConf
 		tracer oteltrace.Tracer
-		jobs   map[string]*WrapperJob
+		jobs   map[string][]*WrapperJob
 		hooks  []saramakafka.ConsumerHook
 	}
 )
@@ -35,21 +35,23 @@ type (
 func NewQueueTaskController(conf QueueTaskConf, opts ...Option) IQueueTaskController {
 	c := &controller{
 		conf:  conf,
-		jobs:  make(map[string]*WrapperJob),
+		jobs:  make(map[string][]*WrapperJob),
 		hooks: []saramakafka.ConsumerHook{},
 	}
 
 	for _, opt := range opts {
 		opt(c)
 	}
-	//
-
-	//c.hooks = append(c.hooks, internal.DurationHook)
 
 	return c
 }
 
 func (c *controller) Start() {
+	for _, job := range c.jobs {
+		for _, item := range job {
+			item.Loop()
+		}
+	}
 }
 
 func (c *controller) Stop() {
@@ -67,41 +69,45 @@ func (c *controller) RegisterJobs(jobs ...IQueueJob) {
 			}
 
 			if _, exists := c.jobs[item.Name]; exists {
-				logx.Errorf("[QUEUE-TASK-CONTROLLER-ERROR]: register job: %s on duplicated error, skip it ...", item.Name)
 				continue
 			}
 
-			wrapper := &WrapperJob{
-				queueJob: job,
-				params:   item.Params,
-				topic:    item.Topic,
+			for i := 1; i <= item.WorkerNum; i++ {
+				wrapperJob := c.prepareJob(job, item)
+				c.jobs[item.Name] = append(c.jobs[item.Name], wrapperJob)
 			}
-
-			if c.tracer == nil {
-				wrapper.consumer = saramakafka.NewConsumer(
-					c.conf.Brokers,
-					[]string{item.Topic},
-					item.Name,
-					wrapper.Consume,
-					saramakafka.WithSaslPlaintext(c.conf.Username, c.conf.Password),
-					saramakafka.WithConsumerHook(c.hooks...),
-				)
-			} else {
-				wrapper.consumer = saramakafka.NewConsumer(
-					c.conf.Brokers,
-					[]string{item.Topic},
-					item.Name,
-					wrapper.Consume,
-					saramakafka.WithSaslPlaintext(c.conf.Username, c.conf.Password),
-					saramakafka.WithTracer(c.tracer),
-					saramakafka.WithConsumerHook(c.hooks...),
-				)
-			}
-			wrapper.Loop()
-
-			c.jobs[item.Name] = wrapper
-
-			logx.Infof("[QUEUE-TASK-CONTROLLER]: register job: %s on success", item.Name)
+			fmt.Printf("[QUEUE-TASK-CONTROLLER]: register job: %s on success\n", item.Name)
 		}
 	}
+}
+
+func (c *controller) prepareJob(job IQueueJob, conf QueueJobConf) *WrapperJob {
+	wrapper := &WrapperJob{
+		queueJob: job,
+		params:   conf.Params,
+		topic:    conf.Topic,
+	}
+
+	if c.tracer == nil {
+		wrapper.consumer = saramakafka.NewConsumer(
+			c.conf.Brokers,
+			[]string{conf.Topic},
+			conf.Name,
+			wrapper.Consume,
+			saramakafka.WithSaslPlaintext(c.conf.Username, c.conf.Password),
+			saramakafka.WithConsumerHook(c.hooks...),
+		)
+	} else {
+		wrapper.consumer = saramakafka.NewConsumer(
+			c.conf.Brokers,
+			[]string{conf.Topic},
+			conf.Name,
+			wrapper.Consume,
+			saramakafka.WithSaslPlaintext(c.conf.Username, c.conf.Password),
+			saramakafka.WithTracer(c.tracer),
+			saramakafka.WithConsumerHook(c.hooks...),
+		)
+	}
+
+	return wrapper
 }

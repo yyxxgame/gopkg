@@ -13,9 +13,10 @@ type (
 	}
 
 	QueueJobConf struct {
-		Name   string
-		Topic  string
-		Params map[string]any
-		Enable bool `json:",optional,default=true"`
+		Name      string
+		Topic     string
+		WorkerNum int `json:",optional,default=1"`
+		Params    map[string]any
+		Enable    bool `json:",optional,default=true"`
 	}
 )
