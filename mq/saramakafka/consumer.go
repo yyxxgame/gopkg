@@ -81,6 +81,7 @@ func NewConsumer(brokers, topics []string, groupId string, handler ConsumerHandl
 		config.Net.SASL.Password = c.password
 
 		config.Net.TLS.Enable = false
+		config.ApiVersionsRequest = false
 	}
 
 	client, err := sarama.NewClient(brokers, config)

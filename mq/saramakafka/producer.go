@@ -58,6 +58,7 @@ func NewProducer(brokers []string, opts ...Option) IProducer {
 		config.Net.SASL.Password = p.password
 
 		config.Net.TLS.Enable = false
+		config.ApiVersionsRequest = false
 	}
 
 	syncProducer, err := sarama.NewSyncProducer(brokers, config)
