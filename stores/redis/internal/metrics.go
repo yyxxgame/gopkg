@@ -5,9 +5,11 @@
 package internal
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/duke-git/lancet/v2/convertor"
+	"github.com/duke-git/lancet/v2/maputil"
 	"github.com/prometheus/client_golang/prometheus"
 	v9rds "github.com/redis/go-redis/v9"
 	gozerometric "github.com/zeromicro/go-zero/core/metric"
@@ -63,8 +65,8 @@ type (
 		staleDesc   *prometheus.Desc
 		maxDesc     *prometheus.Desc
 
-		clients []*StatGetter
-		lock    sync.Mutex
+		uniqueClients map[string]*StatGetter
+		lock          sync.Mutex
 	}
 )
 
@@ -105,6 +107,7 @@ func newCollector() *collector {
 			"Max number of connections in the pool",
 			connLabels, nil,
 		),
+		uniqueClients: make(map[string]*StatGetter),
 	}
 
 	prometheus.MustRegister(c)
@@ -128,7 +131,7 @@ func (c *collector) Collect(metrics chan<- prometheus.Metric) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
-	for _, client := range c.clients {
+	for _, client := range c.uniqueClients {
 		host, db := client.Host, convertor.ToString(client.DB)
 		stats := client.PoolStats()
 
@@ -188,5 +191,10 @@ func (c *collector) RegisterClient(client *StatGetter) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
-	c.clients = append(c.clients, client)
+	uniqueClientId := fmt.Sprintf("%s_%d", client.Host, client.DB)
+	if maputil.HasKey(c.uniqueClients, uniqueClientId) {
+		return
+	}
+
+	c.uniqueClients[uniqueClientId] = client
 }
