@@ -12,6 +12,7 @@ import (
 	"time"
 
 	v9rds "github.com/redis/go-redis/v9"
+	"github.com/redis/go-redis/v9/maintnotifications"
 	"github.com/yyxxgame/gopkg/stores/redis/internal"
 	"github.com/zeromicro/go-zero/core/syncx"
 	gozerotrace "github.com/zeromicro/go-zero/core/trace"
@@ -36,6 +37,9 @@ type (
 		readTimeout           time.Duration
 		pingTimeout           time.Duration
 		hooks                 []v9rds.Hook
+		// 适配redis 7.x以下版本
+		disableIdentity          bool
+		maintNotificationsConfig *maintnotifications.Config
 	}
 
 	Option func(rds *Redis)
@@ -49,6 +53,10 @@ func NewRedis(conf RedisConf, opts ...Option) *Redis {
 		slowThresholdDuration: slowThresholdDuration,
 		readTimeout:           readTimeout,
 		pingTimeout:           pingTimeout,
+		disableIdentity:       false,
+		maintNotificationsConfig: &maintnotifications.Config{
+			Mode: maintnotifications.ModeAuto,
+		},
 	}
 
 	for _, opt := range opts {
@@ -56,12 +64,14 @@ func NewRedis(conf RedisConf, opts ...Option) *Redis {
 	}
 
 	rds.Client = v9rds.NewClient(&v9rds.Options{
-		Addr:         conf.Host,
-		Password:     conf.Pass,
-		DB:           rds.db,
-		MaxRetries:   rds.maxRetries,
-		MinIdleConns: rds.idleConns,
-		ReadTimeout:  rds.readTimeout,
+		Addr:                     conf.Host,
+		Password:                 conf.Pass,
+		DB:                       rds.db,
+		MaxRetries:               rds.maxRetries,
+		MinIdleConns:             rds.idleConns,
+		ReadTimeout:              rds.readTimeout,
+		DisableIdentity:          rds.disableIdentity,
+		MaintNotificationsConfig: rds.maintNotificationsConfig,
 	})
 
 	rds.Client.AddHook(&internal.DurationHook{
@@ -147,5 +157,17 @@ func WithPingTimeout(timeout time.Duration) Option {
 func WithSlowThresholdDuration(threshold time.Duration) Option {
 	return func(rds *Redis) {
 		rds.slowThresholdDuration = threshold
+	}
+}
+
+func WithDisableIdentity() Option {
+	return func(rds *Redis) {
+		rds.disableIdentity = true
+	}
+}
+
+func WithMaintNotificationsConfig(conf *maintnotifications.Config) Option {
+	return func(rds *Redis) {
+		rds.maintNotificationsConfig = conf
 	}
 }
