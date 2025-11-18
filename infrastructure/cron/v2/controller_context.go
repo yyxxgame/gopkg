@@ -5,9 +5,10 @@
 package v2
 
 import (
+	"fmt"
+
 	"github.com/robfig/cron/v3"
 	"github.com/yyxxgame/gopkg/infrastructure/cron/v2/internal"
-	"github.com/zeromicro/go-zero/core/logx"
 	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
@@ -68,7 +69,7 @@ func (c *controller) RegisterJobs(jobs ...ICronJob) {
 			}
 
 			if _, exists := c.handlers[item.Name]; exists {
-				logx.Errorf("[CRON-TASK-CONTROLLER-ERROR]: register job: %s on duplicated error, skip it ...", item.Name)
+				fmt.Printf("[CRON-TASK-CONTROLLER] register job: %s on duplicated error, skip it ...\n", item.Name)
 				continue
 			}
 
@@ -85,9 +86,9 @@ func (c *controller) RegisterJobs(jobs ...ICronJob) {
 
 			_, err := c.cron.AddJob(item.Expression, wrapper)
 			if err != nil {
-				logx.Errorf("[CRON-TASK-CONTROLLER-ERROR]: register job: %s on error: %v", item.Name, err)
+				fmt.Printf("[CRON-TASK-CONTROLLER] register job: %s on error: %v\n", item.Name, err)
 			} else {
-				logx.Infof("[CRON-TASK-CONTROLLER]: register job: %s on success", item.Name)
+				fmt.Printf("[CRON-TASK-CONTROLLER] register job: %s on success\n", item.Name)
 			}
 
 			c.handlers[item.Name] = wrapper
