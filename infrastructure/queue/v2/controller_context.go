@@ -76,7 +76,7 @@ func (c *controller) RegisterJobs(jobs ...IQueueJob) {
 				wrapperJob := c.prepareJob(job, item)
 				c.jobs[item.Name] = append(c.jobs[item.Name], wrapperJob)
 			}
-			fmt.Printf("[QUEUE-TASK-CONTROLLER]: register job: %s on success\n", item.Name)
+			fmt.Printf("[QUEUE-TASK-CONTROLLER] register job: %s on success\n", item.Name)
 		}
 	}
 }
