@@ -3,6 +3,7 @@ package sign_md5
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"sort"
 	"strings"
@@ -49,9 +50,14 @@ func (m *Middleware) Handle(next http.HandlerFunc) http.HandlerFunc {
 
 		payload, _ := sonic.MarshalString(params)
 		ctx := context.WithValue(r.Context(), "__params", payload)
-		r = r.WithContext(ctx)
+		newR := r.WithContext(ctx)
 
-		next(w, r)
+		// 重写 Body（使用高效 Reader，避免 Buffer 开销）
+		newR.Body = io.NopCloser(strings.NewReader(payload))
+		newR.ContentLength = int64(len(params))
+		newR.Header.Set("Content-Type", "application/json")
+
+		next(w, newR)
 	}
 }
 
