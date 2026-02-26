@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/bytedance/sonic"
+	"github.com/duke-git/lancet/v2/convertor"
 )
 
 const (
@@ -31,8 +32,8 @@ func parseForm(r *http.Request) (map[string]interface{}, error) {
 
 func GetAllParams(r *http.Request) map[string]any {
 	params := make(map[string]any)
-
-	cacheParams := r.Context().Value("__params").(string)
+	payload := r.Context().Value("__params")
+	cacheParams := convertor.ToString(payload)
 	if len(cacheParams) > 0 {
 		_ = sonic.UnmarshalString(cacheParams, &params)
 		return params
