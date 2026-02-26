@@ -1,7 +1,7 @@
 package request
 
 import (
-	"bytes"
+	"errors"
 	"io"
 	"net/http"
 	"strings"
@@ -18,49 +18,34 @@ func parseForm(r *http.Request) (map[string]interface{}, error) {
 		return nil, err
 	}
 	if err := r.ParseMultipartForm(maxMemory); err != nil {
-		if err != http.ErrNotMultipart {
+		if !errors.Is(err, http.ErrNotMultipart) {
 			return nil, err
 		}
 	}
-	params := make(map[string]interface{}, len(r.Form))
+	params := make(map[string]any, len(r.Form))
 	for name := range r.Form {
 		params[name] = r.Form.Get(name)
 	}
 	return params, nil
 }
 
-func GetAllParams(r *http.Request) map[string]interface{} {
-	params := make(map[string]interface{})
-	cacheParams := r.Header.Get("__params")
+func GetAllParams(r *http.Request) map[string]any {
+	params := make(map[string]any)
+
+	cacheParams := r.Context().Value("__params").(string)
 	if len(cacheParams) > 0 {
-		if err := sonic.UnmarshalString(cacheParams, &params); err != nil {
-			return nil
-		} else {
-			return params
-		}
-	} else {
-		formParams, _ := parseForm(r)
-		for key, val := range formParams {
-			params[key] = val
-		}
-		bodyBytes, _ := io.ReadAll(r.Body)
-		contentType := r.Header["Content-Type"]
-		if (contentType != nil && strings.Contains(contentType[0], "application/json")) || strings.Contains(string(bodyBytes), "{") {
-			jsonParams := make(map[string]interface{})
-			_ = sonic.Unmarshal(bodyBytes, &jsonParams)
-			for key, val := range jsonParams {
-				params[key] = val
-			}
-		}
-		// Rewrite Request Body
-		if paramsBytes, err := sonic.Marshal(params); err == nil {
-			r.Header.Set("Content-Type", "application/json")
-			buf := bytes.NewBuffer(paramsBytes)
-			r.ContentLength = int64(buf.Len())
-			r.Body = io.NopCloser(buf)
-			// Cache Params To Header
-			r.Header.Set("__params", string(paramsBytes))
-		}
+		_ = sonic.UnmarshalString(cacheParams, &params)
 		return params
 	}
+
+	contentType := strings.ToLower(r.Header.Get("Content-Type"))
+	switch {
+	case strings.Contains(contentType, "application/json"):
+		bodyBytes, _ := io.ReadAll(r.Body)
+		_ = sonic.Unmarshal(bodyBytes, &params)
+	default:
+		params, _ = parseForm(r)
+	}
+
+	return params
 }

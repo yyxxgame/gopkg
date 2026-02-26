@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -62,7 +63,7 @@ func (m *Responder) Response(w http.ResponseWriter, r *http.Request, resp any, e
 				httpx.ErrorCtx(r.Context(), w, err)
 			} else {
 				if n, err := w.Write([]byte(bs)); err != nil {
-					if err != http.ErrHandlerTimeout {
+					if !errors.Is(err, http.ErrHandlerTimeout) {
 						logx.WithContext(r.Context()).Errorf("write response failed, error: %s", err)
 					}
 				} else if n < len(bs) {

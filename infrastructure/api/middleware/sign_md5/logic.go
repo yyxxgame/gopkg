@@ -1,6 +1,7 @@
 package sign_md5
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"sort"
@@ -39,11 +40,17 @@ func New(signKey string, options ...Option) IMiddlewareInterface {
 
 func (m *Middleware) Handle(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		req := request.GetAllParams(r)
-		if !m.checkSign(req) {
-			m.responder.Response(w, r, map[string]interface{}{"code": -3, "msg": "sign error"}, nil)
+		params := request.GetAllParams(r)
+
+		if !m.checkSign(params) {
+			m.responder.Response(w, r, map[string]any{"code": -3, "msg": "sign error"}, nil)
 			return
 		}
+
+		payload, _ := sonic.MarshalString(params)
+		ctx := context.WithValue(r.Context(), "__params", payload)
+		r = r.WithContext(ctx)
+
 		next(w, r)
 	}
 }
