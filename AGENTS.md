@@ -217,6 +217,41 @@ gopkg/
 
 ---
 
+## 文档说明
+
+### 包文档
+
+大多数包都有独立的 README.md 文档，包含：
+
+- 功能特性介绍
+- 详细使用示例
+- API 参考
+- 测试命令
+- 最佳实践
+- 注意事项
+
+**已文档化的包**:
+- `algorithm/` - 退避算法
+- `collection/concurrentmap/` - 并发安全 Map
+- `cryptor/aes/` - AES 加密
+- `cryptor/rsa/` - RSA 加密
+- `eventbus/` - 事件总线
+- `infrastructure/cron/v2/` - 定时任务 v2
+- `infrastructure/queue/` - 任务队列 v1
+- `infrastructure/queue/v2/` - 任务队列 v2
+- `logw/` - 日志写入器
+- `mq/kqkafka/` - Kafka Q 消费者
+- `mq/saramakafka/` - Sarama Kafka
+- `mq/tasks/` - 任务队列核心
+- `runtimex/gctuner/` - GC 调优器
+- `stores/elastic/` - Elasticsearch
+- `stores/redis/` - Redis 客户端
+- `syncx/gopool/` - Goroutine 池
+- `watcher/` - 监听器
+- `xtrace/` - 分布式追踪
+
+---
+
 ## Agent 注意事项
 
 1. **无 CI/CD**: 项目没有 GitHub Actions 或 Makefile，使用标准 Go 工具。
@@ -225,3 +260,4 @@ gopkg/
 4. **禁止类型压制**: 永远不要使用 `as any` 或 `@ts-ignore` 等价物。
 5. **测试覆盖**: 现有 24 个测试文件，确保新代码有测试。
 6. **中文注释**: 实现细节可以使用中文，但导出的 API 文档使用英文。
+7. **文档优先**: 修改包时先查看对应的 README.md 文档。
